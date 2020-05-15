@@ -22,7 +22,7 @@ np.random.seed(1024)
 
 # num_epochs = 350
 # num_epochs = 13
-num_epochs = 100
+num_epochs = 3
 # learning_rate = 0.001
 learning_rate = 0.01
 miscoverage_rate = 0.001
@@ -46,50 +46,16 @@ def save_checkpoint(state, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
 
 # L2_loss_weight = 1.0
-L2_loss_weight = 0.1
-convergence_reg_weight = 1.0
-alpha = 1e-1
+# L2_loss_weight = 0.0001
+L2_loss_weight = 0.
+# convergence_reg_weight = 1.0
+alpha = 1e-3
 def hinge_loss_function(LHS, RHS):
     res = LHS - RHS + alpha
     res[res<0] = 0
     return res.mean()
 
-# def separator_loss(LHS, RHS, margin):
-#     res = RHS - LHS
-#     loss = margin + lambda_1 * (-1.0 * res) + lambda_2 * (res - margin)
-#     return res.mean()
-
-def pol2cart(rho, theta):
-    # rho, theta: Nx1
-    rho = rho.view(-1,1)
-    theta = theta.view(-1,1)
-    x = rho * torch.cos(theta)
-    y = rho * torch.sin(theta)
-    return torch.cat((x, y), dim=1)
-
 global_step = 0
-
-def calc_half_conformal_interval_width(calibration_loader):
-    result, _ = trainval(0, calibration_loader, None, training=False)
-    # from IPython import embed; embed()
-    LHS = np.concatenate(result[3], axis=0)
-    RHS = np.concatenate(result[4], axis=0)
-    residuals = np.abs(LHS - RHS).reshape(-1).tolist()
-    residuals.sort()
-    d = residuals[int(np.ceil((len(residuals)+1) * (1-miscoverage_rate)))-1]
-    return d, residuals
-
-def show_ellipsoid(P, samples):
-    thetas = np.arange(0,1,0.01) * 2 * np.pi
-    points = []
-    for i, theta in enumerate(thetas):
-        point = np.array([np.cos(theta), np.sin(theta)])
-        points.append(point)
-    points = np.array(points)
-    points = np.linalg.inv(P).dot(points.T)
-    plt.scatter(points[0,:], points[1,:], s=0.1, marker='o', color='r')
-    plt.scatter(samples[0,:], samples[1,:], s=0.1, marker='o', color='g')
-    plt.show()
 
 K = 1024
 def loss_zero_matrix(A):
@@ -119,12 +85,6 @@ def trainval(epoch, dataloader, writer, training):
         model.eval()
     end = time.time()
     for step, (X0, R, Xi0, Xi1, T) in enumerate(dataloader):
-    # _iter = iter(dataloader)
-    # (X0, R, Xi0, Xi1, T) = _iter.next()
-    # for step in range(len(dataloader)):
-        # print(R)
-        # import pdb; pdb.set_trace()
-        # import ipdb; ipdb.set_trace()
         batch_size = X0.size(0)
         time_str = 'data time: %.3f s\t'%(time.time()-end)
         end = time.time()
@@ -139,33 +99,10 @@ def trainval(epoch, dataloader, writer, training):
         time_str += 'forward time: %.3f s\t'%(time.time()-end)
         end = time.time()
 
-        # result[0].append(X.detach().cpu().numpy())
-        # result[1].append(R.detach().cpu().numpy())
-        # result[2].append(T.detach().cpu().numpy())
-        # result[3].append(LHS.detach().cpu().numpy())
-        # result[4].append(RHS.detach().cpu().numpy())
-
-        # TransformMatrix = TransformMatrix.view(-1,num_dim_projected,num_dim_projected)
-        # eps = 1e-5
-        # TransformMatrix = torch.inverse(W+eps*torch.eye(W.shape[-1]).unsqueeze(0).type(W.type()))
-        # TransformMatrix = model.module.P
         DXi = projection(Xi1-Xi0)
-        # # DXi_norm2 = (DXi ** 2).sum(dim=1)
-        # DXi_inv_weights = ((2 * torch.matmul(torch.matmul(DXi.view(batch_size, 1, num_dim), torch.transpose(TransformMatrix, 1,2)),TransformMatrix))**2).view(batch_size,num_dim).sum(dim=1)# + 1e-3
         LHS = ((torch.matmul(TransformMatrix, DXi.view(batch_size,num_dim_projected,1)).view(batch_size,num_dim_projected)) ** 2).sum(dim=1)# / DXi_inv_weights
-        # RHS = 1.0 / DXi_inv_weights
         RHS = torch.ones(LHS.size()).type(DXi.type())
 
-        # TransformMatrix = (model.module.P + torch.transpose(model.module.P, 1,2))
-        # DXi = Xi1-Xi0
-        # from IPython import embed;embed()
-        # DXi_norm2 = (DXi ** 2).sum(dim=1)
-        # DXi_inv_weights = ((2 * torch.matmul(DXi.view(batch_size, 1, num_dim), TransformMatrix))**2).view(batch_size,num_dim).sum(dim=1).detach()# + 1e-3
-        # LHS = torch.matmul(torch.matmul(DXi.view(batch_size, 1, num_dim), TransformMatrix), DXi.view(batch_size, num_dim, 1)).view(-1)# / DXi_inv_weights
-        # RHS = torch.ones(LHS.size()).cuda()
-        # RHS = 1.0 / DXi_inv_weights
-
-        # import ipdb; ipdb.set_trace()
         _hinge_loss = hinge_loss_function(LHS, RHS)
         _L2_loss = F.mse_loss(LHS, RHS)
         # _convergence_reg = loss_zero_matrix(torch.inverse(model(torch.cat([X0,Xi0,torch.zeros(R.size()).type(R.type()),T], dim=1)).view(-1,num_dim_projected,num_dim_projected)))
@@ -206,21 +143,10 @@ def trainval(epoch, dataloader, writer, training):
         writer.add_scalar('Hinge_loss', hinge_loss.avg, global_step)
         writer.add_scalar('convergence_reg', convergence_reg.avg, global_step)
 
-    # result = [np.concatenate(r) for r in result]
-    # import ipdb; ipdb.set_trace()
-    # if epoch>45:
-        # from IPython import embed; embed()
-    # from IPython import embed; embed()
     return result, loss.avg, prec.avg
 
-# from IPython import embed;embed()
-
-# train_loader, val_loader = get_dataloader(30, 5, 4096)
 # train_loader, val_loader = get_dataloader(30, 5, 4096)
 train_loader, val_loader = get_dataloader(10, 5, 256)
-# calibration_loader, _ = get_dataloader(30, 5, 4096)
-# calibration_loader, _ = get_dataloader(30, 5, 4096)
-# calibration_loader, _ = get_dataloader(25, 5, 256)
 
 train_writer = SummaryWriter('log/train')
 val_writer = SummaryWriter('log/val')
@@ -247,10 +173,3 @@ for epoch in range(num_epochs):
         # best_loss = loss
         best_prec = prec
         save_checkpoint({'epoch': epoch + 1, 'state_dict': model.state_dict()})
-
-# d, residuals = calc_half_conformal_interval_width(calibration_loader)
-# filename = 'log/checkpoint.pth.tar'
-# checkpoint = torch.load(filename)
-# checkpoint['d'] = d
-# checkpoint['residuals'] = residuals
-# save_checkpoint(checkpoint)

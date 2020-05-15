@@ -55,9 +55,3 @@ def get_model(num_dim):
         output = output / (input[:, -2].unsqueeze(-1).unsqueeze(-1))
         return output
     return model, forward
-
-# model.margin = torch.nn.Parameter(torch.Tensor(1))
-# model.P = torch.nn.Parameter(torch.from_numpy(10*np.eye(2,2).astype('float32')).view(1,2,2))
-# model.P = torch.nn.Parameter(torch.from_numpy(100*np.eye(2,2).astype('float32')).view(1,2,2))
-# model.P = torch.nn.Parameter(torch.from_numpy(100*np.eye(2,2).astype('float32')).view(1,2,2))
-# model.P = torch.nn.Parameter(torch.from_numpy(np.array([[-176.81919284, 306.34485252], [-306.34485252,  496.81919284]]).astype('float32')).view(1,2,2))
