@@ -1,0 +1,6 @@
+numpy
+matplotlib
+scipy
+tqdm
+torch==1.4.0
+tensorboardX
