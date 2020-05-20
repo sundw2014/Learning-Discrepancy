@@ -94,19 +94,26 @@ for center in centers:
             P = P.view(num_dim_projected,num_dim_projected)
             reachsets.append([point[1::], P.cpu().detach().numpy()])
 
-        fig = plt.figure(figsize=(8.0, 5.0))
-        ax = fig.gca(projection='3d')
+        from mayavi import mlab
+        # from tvtk.api import tvtk
+        # mlab.pipeline.user_defined(data, filter=tvtk.CubeAxesActor())
+        mlab.figure(1, size=(400, 400), bgcolor=(0, 0, 0))
+        mlab.clf()
+        # fig = plt.figure(figsize=(8.0, 5.0))
+        # ax = fig.gca(projection='3d')
 
         # plot the ref trace
         trace = np.array(trace)
-        ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
+        # ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
+        mlab.plot3d(trace[:,1], trace[:,2], trace[:,3], color=(1,0,0))
 
         # plot ellipsoids for each time step
         # reachtube = [[], [], []]
         for reachset in reachsets:
             x,y,z = ellipsoid_surface(reachset[1])
             c = reachset[0]
-            ax.plot_surface(x+c[0], y+c[1], z+c[2], color='g')
+            # ax.plot_surface(x+c[0], y+c[1], z+c[2], color='g')
+            mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.2)
             # reachtube[0].append(x+c[0])
             # reachtube[1].append(y+c[1])
             # reachtube[2].append(z+c[2])
@@ -130,9 +137,11 @@ for center in centers:
             c = samples[:,hit[0]] + center
             trace = TC_Simulate(c, T_MAX).tolist()[::5]
             trace = np.array(trace)
-            ax.plot(trace[:,1], trace[:,2], trace[:,3], color='b', label='samples')
+            # ax.plot(trace[:,1], trace[:,2], trace[:,3], color='b', label='samples')
+            mlab.plot3d(trace[:,1], trace[:,2], trace[:,3], color=(0,0,1))
 
-        plt.title((benchmark_name+': initial set c=['+' '.join(['%.3f',] * 9)+'], r=%.3f; T_MAX=%.1f s')%tuple(center+[r, T_MAX]))
+        mlab.show()
+        # plt.title((benchmark_name+': initial set c=['+' '.join(['%.3f',] * 9)+'], r=%.3f; T_MAX=%.1f s')%tuple(center+[r, T_MAX]))
         # plt.savefig(log_dir + '/' + benchmark_name + '_%d'%cnt + '.pdf')
-        plt.show()
-        cnt += 1
+        # plt.show()
+        # cnt += 1
