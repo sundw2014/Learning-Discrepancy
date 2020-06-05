@@ -14,3 +14,82 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+def getAxisAlignedCircumscribedRectangleOfEllipsoid(P):
+    import numpy as np
+    # import ipdb; ipdb.set_trace()
+    # f(x) = x^T M x - 1
+    assert P.ndim == 2
+    assert P.shape[0] == P.shape[1]
+    n = P.shape[0]
+    M = P.T.dot(P)
+    assert np.linalg.eig(M)[0].min() > 0
+
+    print(np.linalg.eig(M)[0].min())
+    bounds = []
+    for i in range(n):
+        _M = M.copy()
+        row_i = _M[i,:].copy()
+        row_0 = _M[0,:].copy()
+        _M[i,:] = row_0
+        _M[0,:] = row_i
+
+        col_i = _M[:,i].copy()
+        col_0 = _M[:,0].copy()
+        _M[:,i] = col_0
+        _M[:,0] = col_i
+
+        a1 = _M[0,0]
+        a = _M[1:,0]
+        b = _M[0,1:].T
+        A_bot = _M[1:,1:]
+        _x1_sq = 0.5 / (a1-b.T.dot(np.linalg.inv(A_bot)).dot(a))
+        print(_x1_sq)
+        assert _x1_sq >= 0
+        _x1 = np.sqrt(_x1_sq)
+        bounds.append(_x1)
+    return np.array(bounds)
+
+def ellipsoid2AArectangle(P, center):
+    import numpy as np
+    bounds = getAxisAlignedCircumscribedRectangleOfEllipsoid(P)
+    return np.array([center - bounds, center + bounds]).T.reshape(-1)
+
+def loadTrainedModel(path):
+    import torch
+    import torch.nn.functional as F
+    import numpy as np
+    import time
+
+    from model import get_model, num_dim_projected
+
+    num_dim = 9
+    model, forward = get_model(num_dim)
+    model = torch.nn.DataParallel(model).cuda()
+
+    checkpoint = torch.load(path)
+    state_dict = checkpoint['state_dict']
+    model.load_state_dict(state_dict)
+
+    torch.backends.cudnn.benchmark = True
+    return forward
+
+def get_tube(initCond, initDelta, TC_Simulate, beta):
+    # initCond: n array
+    # initDelta: n array
+    # beta = loadTrainedModel()
+
+    T_MAX = 10.0
+
+    # find circumscribed ball
+    r = np.sqrt((initDelta ** 2).sum())
+    center = initCond
+    ref_trace = TC_Simulate(center, T_MAX).tolist()
+    reachsets = [np.array([initCond-initDelta, initCond+initDelta]).T.reshape(-1), ]
+    # for point in tqdm(trace[1::]):
+    for point in trace[1::]:
+        P = beta(torch.tensor(center.tolist() + point[1::] +[r, point[0]]).view(1,-1).cuda())
+        num_dim_projected = np.sqrt(P.shape[-1])
+        P = P.view(num_dim_projected,num_dim_projected)
+        reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), point[1::]))
+    return reachsets
