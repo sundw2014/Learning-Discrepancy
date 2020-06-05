@@ -10,7 +10,7 @@ import matplotlib.patches as mpatches
 import matplotlib.animation as animation
 from matplotlib.tri import Triangulation
 from scipy.spatial import ConvexHull
-from utils import AverageMeter
+from utils import AverageMeter, ellipsoid2AArectangle, samplePointsOnAARectangle
 
 from data import get_dataloader
 
@@ -113,6 +113,13 @@ for center in centers:
             x,y,z = ellipsoid_surface(reachset[1])
             c = reachset[0]
             ax.plot_surface(x+c[0], y+c[1], z+c[2], color='g')
+            # bounds = ellipsoid2AArectangle(reachset[1], np.array(c)[0:3])#.reshape(-1,2)
+            # print(np.array(bounds)-np.array([(x+c[0]).min(), (x+c[0]).max(), (y+c[1]).min(), (y+c[1]).max(), (z+c[2]).min(), (z+c[2]).max()]))
+            # # import ipdb; ipdb.set_trace()
+            #
+            # points = samplePointsOnAARectangle(ellipsoid2AArectangle(reachset[1], np.array(c)[0:3]))
+            # ax.scatter(points[:,0], points[:,1], points[:,2], color='y')
+
             # mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.2)
             # reachtube[0].append(x+c[0])
             # reachtube[1].append(y+c[1])

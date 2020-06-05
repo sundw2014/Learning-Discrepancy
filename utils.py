@@ -17,7 +17,6 @@ class AverageMeter(object):
 
 def getAxisAlignedCircumscribedRectangleOfEllipsoid(P):
     import numpy as np
-    # import ipdb; ipdb.set_trace()
     # f(x) = x^T M x - 1
     assert P.ndim == 2
     assert P.shape[0] == P.shape[1]
@@ -25,7 +24,7 @@ def getAxisAlignedCircumscribedRectangleOfEllipsoid(P):
     M = P.T.dot(P)
     assert np.linalg.eig(M)[0].min() > 0
 
-    print(np.linalg.eig(M)[0].min())
+    # print(np.linalg.eig(M)[0].min())
     bounds = []
     for i in range(n):
         _M = M.copy()
@@ -43,10 +42,15 @@ def getAxisAlignedCircumscribedRectangleOfEllipsoid(P):
         a = _M[1:,0]
         b = _M[0,1:].T
         A_bot = _M[1:,1:]
-        _x1_sq = 0.5 / (a1-b.T.dot(np.linalg.inv(A_bot)).dot(a))
-        print(_x1_sq)
+        _x1_sq = 1 / (a1-b.T.dot(np.linalg.inv(A_bot)).dot(a))
+        # print(_x1_sq)
         assert _x1_sq >= 0
         _x1 = np.sqrt(_x1_sq)
+        # _xbot = -_x1 * b.T.dot(np.linalg.inv(A_bot))
+        # _x = np.array([_x1] + _xbot.tolist()).reshape(-1,1)
+        # _x.T.dot(M)
+        # _x.T.dot(M).dot(_x)
+        # import ipdb; ipdb.set_trace()
         bounds.append(_x1)
     return np.array(bounds)
 
@@ -93,3 +97,17 @@ def get_tube(initCond, initDelta, TC_Simulate, beta):
         P = P.view(num_dim_projected,num_dim_projected)
         reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), point[1::]))
     return reachsets
+
+def samplePointsOnAARectangle(bounds, K=100):
+    import numpy as np
+    bounds = bounds.reshape(-1, 2)
+    n = bounds.shape[0]
+    points = []
+    for i in range(n):
+        _b = bounds.copy()
+        _b[i,:] = bounds[i,0]
+        points.append((_b[:,1]-_b[:,0]).reshape(1,-1) * np.random.rand(K,n) + _b[:,0].reshape(1,-1))
+        _b[i,:] = bounds[i,1]
+        points.append((_b[:,1]-_b[:,0]).reshape(1,-1) * np.random.rand(K,n) + _b[:,0].reshape(1,-1))
+
+    return np.concatenate(points, axis=0)
