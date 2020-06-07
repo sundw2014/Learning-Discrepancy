@@ -146,7 +146,7 @@ def trainval(epoch, dataloader, writer, training):
     return result, loss.avg, prec.avg
 
 # train_loader, val_loader = get_dataloader(30, 5, 4096)
-train_loader, val_loader = get_dataloader(100, 5, 256)
+train_loader, val_loader = get_dataloader(10, 5, 256)
 
 train_writer = SummaryWriter('log/train')
 val_writer = SummaryWriter('log/val')

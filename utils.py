@@ -94,13 +94,16 @@ def get_tube(initCond, initDelta, TC_Simulate, beta):
     r = np.sqrt(((normalize(initCond) - normalize(initCond+initDelta))**2).sum())
     center = initCond
     ref_trace = TC_Simulate(center, T_MAX).tolist()
+    ellipsoids = []
     reachsets = [np.array([initCond-initDelta, initCond+initDelta]).T[:3,:].reshape(-1), ]
+
     # for point in tqdm(trace[1::]):
     for point in ref_trace[1::]:
         P = beta(torch.tensor(center.tolist() + [r, point[0]]).view(1,-1).cuda())
         P = P.view(num_dim_observable,num_dim_observable)
         reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), observe(np.array(point[1::]))))
-    return reachsets
+        ellipsoids.append([observe(np.array(point[1::])), P.cpu().detach().numpy()])
+    return ellipsoids, reachsets
 
 def samplePointsOnAARectangle(bounds, K=100):
     import numpy as np

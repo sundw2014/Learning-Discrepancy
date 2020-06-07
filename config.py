@@ -15,7 +15,7 @@ set_lower = np.array([-3., -3., -3., -0.1, -0.1, 0., 0., 0., 0.])
 set_higher = np.array([3., 3., 3., 0.1, 0.1, 0., 0., 0., 2 * np.pi])
 D = np.array([set_lower, set_higher]).T
 normalized_D = np.array([1,1,1,1,1,1,1,1,0.1])
-sampling_RMAX = 100.
+sampling_RMAX = 1.
 
 idx_zeros = (D[:,1] - D[:,0]) == 0
 eps = np.zeros(num_dim)
@@ -25,4 +25,5 @@ def normalize(x):
     assert (x[idx_zeros] == D[idx_zeros,0]).sum() == idx_zeros.sum()
     return (x - D[:,0]) / (D[:,1] - D[:,0] + eps) * normalized_D
 def unnormalize(x):
+    assert np.logical_and(x < normalized_D, x > 0).sum() == num_dim
     return (x / normalized_D) * (D[:,1] - D[:,0]) + D[:,0]
