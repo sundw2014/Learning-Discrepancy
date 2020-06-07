@@ -22,13 +22,9 @@ class Polynomials(torch.nn.Module):
         output = self.linear(x)
         return output
 
-num_dim_projected = 3
-def projection(x):
-    return x[:, 0:num_dim_projected]
-
-def get_model(num_dim):
+def get_model(num_dim, num_dim_observable):
     model = torch.nn.Sequential(
-            torch.nn.Linear(num_dim+num_dim+1+1, 128, bias=False),
+            torch.nn.Linear(num_dim+1+1, 128, bias=False),
             # torch.nn.BatchNorm1d(300),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(128, 512, bias=False),
@@ -37,11 +33,11 @@ def get_model(num_dim):
             torch.nn.Linear(512, 128, bias=False),
             # torch.nn.BatchNorm1d(300),
             torch.nn.LeakyReLU(),
-            torch.nn.Linear(128, num_dim_projected * num_dim_projected, bias=False))
+            torch.nn.Linear(128, num_dim_observable*num_dim_observable, bias=False))
             # torch.nn.Linear(128, 1, bias=False))
     # model = Polynomials(num_dim+num_dim+1+1, 1, orders=range(6))
     def forward_hook(module, input, output):
-        I = torch.eye(num_dim).view((1, num_dim_projected * num_dim_projected))
+        I = torch.eye(num_dim).view((1, ))
         I = I.repeat(output.size(0), 1, 1).cuda()
         I.requires_grad_(False)
         output = output.view(-1,1,1)
@@ -51,7 +47,7 @@ def get_model(num_dim):
     def forward(input):
         output = model(input)
         # import ipdb; ipdb.set_trace()
-        output = output.view(input.shape[0], num_dim_projected, num_dim_projected)
+        output = output.view(input.shape[0], num_dim_observable, num_dim_observable)
         output = output / (input[:, -2].unsqueeze(-1).unsqueeze(-1))
         return output
     return model, forward

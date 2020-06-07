@@ -101,7 +101,7 @@ def compute_desired_state(state, goal, time_step):
 
 
 # function to provide traces of the system
-def TC_Simulate(initial_condition, time_bound, mode=[2,2,6]):
+def TC_Simulate(initial_condition, time_bound, mode=[0,0,0]):
     action = [0.0, 0.0, 0.0, 0.0]
     time_step = 0.01
     number_points = int(np.ceil(time_bound / time_step))
@@ -110,9 +110,9 @@ def TC_Simulate(initial_condition, time_bound, mode=[2,2,6]):
         time.append(time_bound)
     time_seq = np.arange(0.0, time_step, time_step / 10)
     # Simulate the system
-    trace = []
     state = list(initial_condition)
-    for i, t in enumerate(time):
+    trace = [[0.] + list(state[:9]),]
+    for i, t in enumerate(time[1:]):
         desired_state = compute_desired_state(state, mode, time_step)
         action = control(state, desired_state, action)
         out = odeint(dynamics, state, time_seq, args=(action,))

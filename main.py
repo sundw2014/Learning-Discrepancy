@@ -11,10 +11,11 @@ import matplotlib.animation as animation
 from utils import AverageMeter
 
 from data import get_dataloader
+from config import TC_Simulate, normalized_D, normalize, unnormalize, sampling_RMAX, num_dim, num_dim_observable
 
 from tensorboardX import SummaryWriter
 
-from model import get_model, projection, num_dim_projected
+from model import get_model
 
 use_cuda = True
 
@@ -27,8 +28,7 @@ num_epochs = 3
 learning_rate = 0.01
 miscoverage_rate = 0.001
 
-num_dim = 9
-model, forward = get_model(num_dim)
+model, forward = get_model(num_dim, num_dim_observable)
 if use_cuda:
     model = model.cuda()
 
@@ -95,12 +95,12 @@ def trainval(epoch, dataloader, writer, training):
             Xi1 = Xi1.cuda()
             T = T.cuda()
         # import ipdb; ipdb.set_trace()
-        TransformMatrix = forward(torch.cat([X0,Xi0,R,T], dim=1))
+        TransformMatrix = forward(torch.cat([X0,R,T], dim=1))
         time_str += 'forward time: %.3f s\t'%(time.time()-end)
         end = time.time()
 
-        DXi = projection(Xi1-Xi0)
-        LHS = ((torch.matmul(TransformMatrix, DXi.view(batch_size,num_dim_projected,1)).view(batch_size,num_dim_projected)) ** 2).sum(dim=1)# / DXi_inv_weights
+        DXi = Xi1 - Xi0
+        LHS = ((torch.matmul(TransformMatrix, DXi.view(batch_size,num_dim_observable,1)).view(batch_size,num_dim_observable)) ** 2).sum(dim=1)# / DXi_inv_weights
         RHS = torch.ones(LHS.size()).type(DXi.type())
 
         _hinge_loss = hinge_loss_function(LHS, RHS)
