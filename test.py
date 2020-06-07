@@ -25,6 +25,9 @@ np.random.seed(1024)
 from examples.drone import TC_Simulate
 
 beta = loadTrainedModel('log/checkpoint.pth.tar')
+# set_lower = np.array([-3., -3., -3., -0.1, -0.1, 0., 0., 0., 0.])
+# set_higher = np.array([3., 3., 3., 0.1, 0.1, 0., 0., 0., 2 * np.pi])
+# initCond = np.random.rand(len(set_lower)) * (set_higher - set_lower) + set_lower
 initCond = np.array([-1,-1,-2,0,0,0,0,0,np.pi])
 initDelta = np.array([0.3, 0.3, 0.3, 0.01, 0.01, 0, 0, 0, np.pi])
 ellipsoids, tube = get_tube(initCond, initDelta, TC_Simulate, beta)
