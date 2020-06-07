@@ -13,31 +13,18 @@ import torch.utils.data as data
 
 from config import TC_Simulate, normalized_D, normalize, unnormalize, sampling_RMAX, num_dim, observe
 
-def gen_trace_in_a_ball(num_traces, R_MAX, normalized_D, unnormalize, TC_Simulate, T_MAX, c):
-    traces = []
-    for _ in range(num_traces):
-        while True:
-            samples = R_MAX * (np.random.rand(len(c), 10) - 0.5)
-            hit = np.where(np.sqrt((samples ** 2).sum(axis=0)) < R_MAX)[0]
-            if len(hit)>0:
-                break
-        point[point > normalized_D] = normalized_D
-        point[point < 0] = 0
-        point = unnormalize(np.array(c) + samples[:,hit[0]])
-        _trace = TC_Simulate(point.tolist(), T_MAX)[::5,:]
-        traces.append(_trace)
-    return traces
+def gen_trace(unnormalize, TC_Simulate, T_MAX, c):
+    point = unnormalize(np.array(c))
+    _trace = TC_Simulate(point.tolist(), T_MAX)[::5,:]
+    return _trace
 
 
 class DiscriData(data.Dataset):
     """DiscriData."""
-    def __init__(self, num_traces, num_sampling_balls=100, T_MAX=10.0):
+    def __init__(self, num_traces, T_MAX=10.0):
         super(DiscriData, self).__init__()
 
         def sample_in_D():
-            # start = np.ones(num_dim) * sampling_RMAX
-            # end = normalized_D - sampling_RMAX
-            # assert (end >= start).sum() == num_dim
             start = np.zeros(num_dim)
             end = normalized_D
             assert (end >= start).sum() == num_dim
@@ -46,29 +33,25 @@ class DiscriData(data.Dataset):
             return sample
 
         # generate traces
-        self.num_sampling_balls = num_sampling_balls
-        self.centers = [sample_in_D() for _ in range(self.num_sampling_balls)]
         self.num_traces = num_traces
+        self.initial_points = [sample_in_D() for _ in range(self.num_traces)]
         self.traces = []
 
-        func = partial(gen_trace_in_a_ball, self.num_traces, sampling_RMAX, normalized_D, unnormalize, TC_Simulate, T_MAX)
+        func = partial(gen_trace, unnormalize, TC_Simulate, T_MAX)
         with Pool(30) as p:
-            self.traces = list(tqdm.tqdm(p.imap(func, self.centers), total=len(self.centers)))
+            self.traces = list(tqdm.tqdm(p.imap(func, self.initial_points), total=len(self.initial_points)))
 
-        self.num_t = len(self.traces[0][0]) - 1
+        self.num_t = len(self.traces[0]) - 1
         # from IPython import embed; embed()
 
-    def norm(self, x1, x2):
+    def distance(self, x1, x2):
         return np.sqrt(((np.array(x1) - np.array(x2))**2).sum())
 
     def __getitem__(self, index):
         while True:
             _index = index
-            NB = self.num_sampling_balls
             NT = self.num_t
             NTr = self.num_traces
-            ib = _index // (NT * NTr * (NTr - 1))
-            _index = _index % (NT * NTr * (NTr - 1))
             it =  _index // (NTr * (NTr - 1))
             it = it + 1
             _index = _index % (NTr * (NTr - 1))
@@ -77,14 +60,14 @@ class DiscriData(data.Dataset):
             i2 = _index
             i2 = i2 if i2<i1 else i2+1
 
-            trace0 = self.traces[ib][i1]
-            trace1 = self.traces[ib][i2]
+            trace0 = self.traces[i1]
+            trace1 = self.traces[i2]
             x0 = trace0[0][1::]
             x1 = trace1[0][1::]
             t = trace0[it][0]
             xi0 = observe(trace0[it][1::])
             xi1 = observe(trace1[it][1::])
-            r = self.norm(normalize(x0), normalize(x1))
+            r = self.distance(normalize(x0), normalize(x1))
 
             break
             # eps = 1e-4
@@ -101,7 +84,7 @@ class DiscriData(data.Dataset):
             #TODO normalization
 
     def __len__(self):
-        return self.num_sampling_balls * self.num_t * self.num_traces * (self.num_traces - 1)
+        return self.num_t * self.num_traces * (self.num_traces - 1)
 
 def get_dataloader(num_traces_train, num_traces_val, batch_size=16):
     train_loader = torch.utils.data.DataLoader(

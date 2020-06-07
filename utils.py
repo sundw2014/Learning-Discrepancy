@@ -65,10 +65,12 @@ def loadTrainedModel(path):
     import numpy as np
     import time
 
-    from model import get_model, num_dim_projected
+    from model import get_model
+
+    from config import num_dim_observable
 
     num_dim = 9
-    model, forward = get_model(num_dim)
+    model, forward = get_model(num_dim, num_dim_observable)
     model = torch.nn.DataParallel(model).cuda()
 
     checkpoint = torch.load(path)
@@ -79,6 +81,9 @@ def loadTrainedModel(path):
     return forward
 
 def get_tube(initCond, initDelta, TC_Simulate, beta):
+    from config import normalize, num_dim_observable, observe
+    import numpy as np
+    import torch
     # initCond: n array
     # initDelta: n array
     # beta = loadTrainedModel()
@@ -86,16 +91,15 @@ def get_tube(initCond, initDelta, TC_Simulate, beta):
     T_MAX = 10.0
 
     # find circumscribed ball
-    r = np.sqrt((initDelta ** 2).sum())
+    r = np.sqrt(((normalize(initCond) - normalize(initCond+initDelta))**2).sum())
     center = initCond
     ref_trace = TC_Simulate(center, T_MAX).tolist()
-    reachsets = [np.array([initCond-initDelta, initCond+initDelta]).T.reshape(-1), ]
+    reachsets = [np.array([initCond-initDelta, initCond+initDelta]).T[:3,:].reshape(-1), ]
     # for point in tqdm(trace[1::]):
-    for point in trace[1::]:
-        P = beta(torch.tensor(center.tolist() + point[1::] +[r, point[0]]).view(1,-1).cuda())
-        num_dim_projected = np.sqrt(P.shape[-1])
-        P = P.view(num_dim_projected,num_dim_projected)
-        reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), point[1::]))
+    for point in ref_trace[1::]:
+        P = beta(torch.tensor(center.tolist() + [r, point[0]]).view(1,-1).cuda())
+        P = P.view(num_dim_observable,num_dim_observable)
+        reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), observe(np.array(point[1::]))))
     return reachsets
 
 def samplePointsOnAARectangle(bounds, K=100):
