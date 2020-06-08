@@ -11,8 +11,8 @@ def observe(state):
     else:
         raise ValueError('wrong state.shape')
 
-set_lower = np.array([-3., -3., -3., -1, -1, -1, 0., 0., 0.])
-set_higher = np.array([3., 3., 3., 1, 1, 1, 2*np.pi, 2*np.pi, 2 * np.pi])
+set_lower = np.array([-3., -3., -3., -0.1, -0.1, 0., 0., 0., 0.])
+set_higher = np.array([3., 3., 3., 0.1, 0.1, 0., 0., 0., 2 * np.pi])
 D = np.array([set_lower, set_higher]).T
 normalized_D = np.array([1,1,1,1,1,1,1,1,0.1])
 sampling_RMAX = 1.

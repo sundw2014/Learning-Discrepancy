@@ -23,7 +23,7 @@ np.random.seed(1024)
 
 # num_epochs = 350
 # num_epochs = 13
-num_epochs = 3
+num_epochs = 1
 # learning_rate = 0.001
 learning_rate = 0.01
 miscoverage_rate = 0.001
