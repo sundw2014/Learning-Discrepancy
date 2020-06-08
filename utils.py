@@ -80,7 +80,9 @@ def loadTrainedModel(path):
     torch.backends.cudnn.benchmark = True
     return forward
 
-def get_tube(initCond, initDelta, TC_Simulate, beta):
+def get_tube(initCond, initDelta, waypoint, TC_Simulate, beta):
+    initCond[:3] -= waypoint
+
     from config import normalize, num_dim_observable, observe
     import numpy as np
     import torch
@@ -101,7 +103,7 @@ def get_tube(initCond, initDelta, TC_Simulate, beta):
     for point in ref_trace[1::]:
         P = beta(torch.tensor(center.tolist() + [r, point[0]]).view(1,-1).cuda())
         P = P.view(num_dim_observable,num_dim_observable)
-        reachsets.append(ellipsoid2AArectangle(P.cpu().detach().numpy(), observe(np.array(point[1::]))))
+        reachsets.append(waypoint.reshape(-1,1).repeat(1,2).reshape(-1) + ellipsoid2AArectangle(P.cpu().detach().numpy(), observe(np.array(point[1::]))))
         ellipsoids.append([observe(np.array(point[1::])), P.cpu().detach().numpy()])
     return ellipsoids, reachsets
 
