@@ -97,7 +97,7 @@ def get_tube(initCond, initDelta, waypoint, TC_Simulate, beta):
     center = initCond
     ref_trace = TC_Simulate(center, T_MAX).tolist()
     ellipsoids = []
-    reachsets = [np.array([initCond-initDelta, initCond+initDelta]).T[:3,:].reshape(-1), ]
+    reachsets = [waypoint.repeat(2) + np.array([initCond-initDelta, initCond+initDelta]).T[:3,:].reshape(-1), ]
 
     # for point in tqdm(trace[1::]):
     for point in ref_trace[1::]:
