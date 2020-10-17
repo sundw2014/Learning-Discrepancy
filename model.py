@@ -1,30 +1,9 @@
 import torch
 import torch.nn.functional as F
 
-class Polynomials(torch.nn.Module):
-    def __init__(self, input_dim, output_dim, orders=None):
-        super(Polynomials, self).__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.orders = orders
-        self.linear = torch.nn.Linear(self.input_dim * len(orders), self.output_dim, bias=False)
-
-    def forward(self, input):
-        # input: B x ...
-        # output: B x self.out_dim
-        bs = input.size(0)
-        input = input.view(bs, -1)
-        assert input.size(1) == self.input_dim
-        x = []
-        for order in self.orders:
-            x.append(input ** order)
-        x = torch.cat(x, dim=1) # B x (self.input_dim*len(orders))
-        output = self.linear(x)
-        return output
-
-def get_model(num_dim, num_dim_observable):
+def get_model(num_dim_input, num_dim_output):
     model = torch.nn.Sequential(
-            torch.nn.Linear(num_dim+1+1, 128, bias=False),
+            torch.nn.Linear(num_dim_input+1+1, 128, bias=False),
             # torch.nn.BatchNorm1d(300),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(128, 512, bias=False),
@@ -33,7 +12,7 @@ def get_model(num_dim, num_dim_observable):
             torch.nn.Linear(512, 128, bias=False),
             # torch.nn.BatchNorm1d(300),
             torch.nn.LeakyReLU(),
-            torch.nn.Linear(128, num_dim_observable*num_dim_observable, bias=False))
+            torch.nn.Linear(128, num_dim_output*num_dim_output, bias=False))
             # torch.nn.Linear(128, 1, bias=False))
     # model = Polynomials(num_dim+num_dim+1+1, 1, orders=range(6))
     def forward_hook(module, input, output):
@@ -47,7 +26,7 @@ def get_model(num_dim, num_dim_observable):
     def forward(input):
         output = model(input)
         # import ipdb; ipdb.set_trace()
-        output = output.view(input.shape[0], num_dim_observable, num_dim_observable)
+        output = output.view(input.shape[0], num_dim_output, num_dim_output)
         output = output / (input[:, -2].unsqueeze(-1).unsqueeze(-1))
         return output
     return model, forward
