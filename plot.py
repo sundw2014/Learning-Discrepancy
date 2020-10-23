@@ -46,6 +46,8 @@ def ellipsoid_surface_3D(P):
     y = np.outer(np.sin(u), np.sin(v)).reshape(-1)
     z = np.outer(np.ones_like(u), np.cos(v)).reshape(-1)
     [x,y,z] = np.linalg.inv(P).dot(np.array([x,y,z]))
+    # if np.array([x,y,z]).max()>10:
+        # import ipdb;ipdb.set_trace()
     return x.reshape(K,K), y.reshape(K,K), z.reshape(K,K)
     # return x, y, z
 
@@ -77,13 +79,24 @@ traces.append(np.array(trace))
 reachsets = []
 # [trace[0, 1:], np.eye(config.num_dim_output)/normalized_r], ]
 for i in tqdm(range(trace.shape[0])):
-    P = forward(torch.tensor(config.observe_for_input(trace[0,1:]).tolist() + [normalized_r, trace[i,0]]).view(1,-1).cuda().float())
+    P = forward(torch.tensor(config.observe_for_input(trace[0,1:]).tolist() + config.observe_for_input(trace[i,1:]).tolist() + [normalized_r, trace[i,0]]).view(1,-1).cuda().float())
     P = P.view(config.num_dim_output,config.num_dim_output)
     reachsets.append([trace[i, 1:], P.cpu().detach().numpy()])
 
+# from IPython import embed; embed()
+tmp = []
+for i in range(len(reachsets)):
+    P = reachsets[i][1]
+    w, v = np.linalg.eig(P)
+    m = np.abs(w).min()
+    print(m)
+    if m > 1.:
+        tmp.append(reachsets[i])
+#reachsets = tmp
+
 # from tvtk.api import tvtk
 # mlab.pipeline.user_defined(data, filter=tvtk.CubeAxesActor())
-mlab.figure(1, size=(400, 400), bgcolor=(0, 0, 0))
+mlab.figure(1, size=(400, 400), bgcolor=(1, 1, 1), fgcolor=(0,0,0))
 mlab.clf()
 
 # plot the ref trace
@@ -104,7 +117,7 @@ for reachset in reachsets:
         mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
     elif config.num_dim_output == 3:
         x,y,z = ellipsoid_surface_3D(reachset[1])
-        mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.2)
+        mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
 
 # randomly sample some traces
 for _ in range(100):
@@ -128,8 +141,8 @@ for _ in range(100):
     point = config.unnormalize(samples[hit[0],:])
     _trace = config.observe_for_output(simulate(point.tolist(), T_MAX)[:,1:])
     if config.num_dim_output == 2:
-        mlab.plot3d(_trace[:,0], _trace[:,1], np.zeros_like(_trace[:,0]), color=(0,0,1))
+        mlab.plot3d(_trace[:,0], _trace[:,1], np.zeros_like(_trace[:,0]), color=(0,0,1), line_width=0.05)
     elif config.num_dim_output == 3:
-        mlab.plot3d(_trace[:,0], _trace[:,1], _trace[:,2], color=(0,0,1))
+        mlab.plot3d(_trace[:,0], _trace[:,1], _trace[:,2], color=(0,0,1), line_width=0.05)
 
 mlab.show()

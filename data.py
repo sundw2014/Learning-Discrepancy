@@ -10,6 +10,7 @@ import sys
 import torch
 
 import torch.utils.data as data
+from utils import loadpklz, savepklz
 
 def gen_trace_in_a_ball(num_traces, R_MAX, normalized_Theta, nonzero_dims, unnormalize, simulate, T_MAX, c):
     traces = []
@@ -38,7 +39,7 @@ def gen_trace_in_a_ball(num_traces, R_MAX, normalized_Theta, nonzero_dims, unnor
 
 class DiscriData(data.Dataset):
     """DiscriData."""
-    def __init__(self, config, num_traces, num_sampling_balls=100, T_MAX=10.0):
+    def __init__(self, config, num_traces, num_sampling_balls=100, T_MAX=10.0, data_file=None):
         super(DiscriData, self).__init__()
 
         self.config = config
@@ -55,10 +56,15 @@ class DiscriData(data.Dataset):
         self.num_traces = num_traces
         self.traces = []
 
-        func = partial(gen_trace_in_a_ball, self.num_traces, self.config.normalized_X0_RMAX, self.config.normalized_Theta, self.config.nonzero_dims, self.config.unnormalize, self.config.simulate, T_MAX)
-        # with Pool(30) as p:
-            # self.traces = list(tqdm.tqdm(p.imap(func, self.X0_centers), total=len(self.X0_centers)))
-        self.traces = list(tqdm.tqdm(map(func, self.X0_centers), total=len(self.X0_centers)))
+        if data_file is not None:
+            self.traces = loadpklz(data_file)
+        else:
+            func = partial(gen_trace_in_a_ball, self.num_traces, self.config.normalized_X0_RMAX, self.config.normalized_Theta, self.config.nonzero_dims, self.config.unnormalize, self.config.simulate, T_MAX)
+            with Pool(4) as p:
+                self.traces = list(tqdm.tqdm(p.imap(func, self.X0_centers), total=len(self.X0_centers)))
+            # self.traces = list(tqdm.tqdm(map(func, self.X0_centers), total=len(self.X0_centers)))
+
+        savepklz(self.traces, './traces_%d.pklz'%num_traces)
 
         self.num_t = len(self.traces[0][0]) - 1
         # from IPython import embed; embed()
@@ -108,13 +114,13 @@ class DiscriData(data.Dataset):
     def __len__(self):
         return self.num_sampling_balls * self.num_t * self.num_traces * (self.num_traces - 1)
 
-def get_dataloader(config, num_traces_train, num_traces_val, batch_size=16):
+def get_dataloader(config, num_traces_train, num_traces_val, batch_size=16, data_file=[None, None]):
     train_loader = torch.utils.data.DataLoader(
-        DiscriData(config, num_traces_train), batch_size=batch_size, shuffle=True,
+        DiscriData(config, num_traces_train, data_file=data_file[0]), batch_size=batch_size, shuffle=True,
         num_workers=20, pin_memory=True)
 
     val_loader = torch.utils.data.DataLoader(
-        DiscriData(config, num_traces_val), batch_size=batch_size, shuffle=True,
+        DiscriData(config, num_traces_val, data_file=data_file[1]), batch_size=batch_size, shuffle=True,
         num_workers=20, pin_memory=True)
 
     return train_loader, val_loader

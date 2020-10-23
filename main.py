@@ -26,11 +26,14 @@ parser.add_argument('--bs', dest='batch_size', type=int, default=256)
 parser.add_argument('--num_train', type=int, default=10)
 parser.add_argument('--num_test', type=int, default=5)
 parser.add_argument('--lr', dest='learning_rate', type=float, default=0.01)
-parser.add_argument('--lambda', dest='_lambda', type=float, default=0.1)
-parser.add_argument('--alpha', dest='alpha', type=float, default=0.05)
+parser.add_argument('--lambda1', dest='_lambda1', type=float, default=0.1)
+parser.add_argument('--lambda2', dest='_lambda2', type=float, default=0.1)
+parser.add_argument('--alpha', dest='alpha', type=float, default=0.1)
 parser.add_argument('--epochs', type=int, default=30)
 parser.add_argument('--lr_step', type=int, default=5)
 parser.add_argument('--pretrained', type=str)
+parser.add_argument('--data_file_train', type=str)
+parser.add_argument('--data_file_eval', type=str)
 parser.add_argument('--log', type=str)
 
 args = parser.parse_args()
@@ -71,6 +74,7 @@ def trainval(epoch, dataloader, writer, training):
     loss = AverageMeter()
     hinge_loss = AverageMeter()
     volume_loss = AverageMeter()
+    l2_loss = AverageMeter()
     prec = AverageMeter()
 
     result = [[],[],[],[],[]] # for plotting
@@ -91,7 +95,7 @@ def trainval(epoch, dataloader, writer, training):
             Xi1 = Xi1.cuda()
             T = T.cuda()
         # import ipdb; ipdb.set_trace()
-        TransformMatrix = forward(torch.cat([config.observe_for_input(X0),R,T], dim=1))
+        TransformMatrix = forward(torch.cat([config.observe_for_input(X0),config.observe_for_input(Xi0),R,T], dim=1))
         time_str += 'forward time: %.3f s\t'%(time.time()-end)
         end = time.time()
 
@@ -103,20 +107,24 @@ def trainval(epoch, dataloader, writer, training):
         eps = 0.001
         # _volume_loss = (-torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det())).mean()
         _volume_loss = -torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs()).mean()
+        _l2_loss = F.mse_loss(LHS, RHS)
+
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
-        _loss = _hinge_loss + args._lambda * _volume_loss
+        _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)
         hinge_loss.update(_hinge_loss.item(), batch_size)
         volume_loss.update(_volume_loss.item(), batch_size)
+        l2_loss.update(_l2_loss.item(), batch_size)
 
         if writer is not None and training:
             writer.add_scalar('loss', loss.val, global_step)
             writer.add_scalar('prec', prec.val, global_step)
             writer.add_scalar('Volume_loss', volume_loss.val, global_step)
             writer.add_scalar('Hinge_loss', hinge_loss.val, global_step)
+            writer.add_scalar('L2_loss', l2_loss.val, global_step)
 
         time_str += 'other time: %.3f s\t'%(time.time()-end)
         c = time.time()
@@ -129,23 +137,24 @@ def trainval(epoch, dataloader, writer, training):
         end = time.time()
         #print(time_str)
 
-    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg))
+    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f, L2_loss: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg, l2_loss.avg))
 
     if writer is not None and not training:
         writer.add_scalar('loss', loss.avg, global_step)
         writer.add_scalar('prec', prec.avg, global_step)
         writer.add_scalar('Volume_loss', volume_loss.avg, global_step)
         writer.add_scalar('Hinge_loss', hinge_loss.avg, global_step)
+        writer.add_scalar('L2_loss', l2_loss.avg, global_step)
 
     return result, loss.avg, prec.avg
 
 # train_loader, val_loader = get_dataloader(30, 5, 4096)
-train_loader, val_loader = get_dataloader(config, args.num_train, args.num_test, args.batch_size)
+train_loader, val_loader = get_dataloader(config, args.num_train, args.num_test, args.batch_size, [args.data_file_train, args.data_file_eval])
 
 train_writer = SummaryWriter(args.log+'/train')
 val_writer = SummaryWriter(args.log+'/val')
 
-# best_loss = np.inf
+best_loss = np.inf
 best_prec = 0
 
 model = torch.nn.DataParallel(model)
@@ -161,8 +170,8 @@ for epoch in range(args.epochs):
     result_train, _, _ = trainval(epoch, train_loader, writer=None, training=False)
     result_val, loss, prec = trainval(epoch, val_loader, writer=val_writer, training=False)
     epoch += 1
-    if prec > best_prec:
-    # if loss < best_loss
-        # best_loss = loss
-        best_prec = prec
+    # if prec > best_prec:
+    if loss < best_loss:
+        best_loss = loss
+        # best_prec = prec
         save_checkpoint({'epoch': epoch + 1, 'state_dict': model.state_dict()})
