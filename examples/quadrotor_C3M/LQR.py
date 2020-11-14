@@ -132,12 +132,12 @@ if __name__ == '__main__':
         signal_AC = np.sin(freqs.reshape(1, -1) * t.reshape(-1, 1)
                            ).dot(weights)  # T x F * F x n = T x n
         signal_DC = np.random.randn(num_dim).reshape(1, -1)  # offset
-        signal = signal_AC + signal_DC
-        signal[:, 2] = 0.1 * t
+        signal = signal_AC# + signal_DC
+        signal[:, 2] = 0.5 * t
         # initial state
         _X0 = 0.1 * np.random.randn(num_dim) + signal_DC.reshape(-1)
         X0 = np.zeros(8)
-        X0[:3] = _X0
+        # X0[:3] = _X0
 
     x_l = simulate_linear(X0, signal, t)
     x_nl = simulate_nonlinear(X0, signal, t)

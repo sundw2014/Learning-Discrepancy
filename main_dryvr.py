@@ -67,7 +67,7 @@ def PWD(normalized_dis, t):
 
     gamma = dy / dt
 
-    return gamma
+    return gamma, t
 
 # train_loader, val_loader = get_dataloader(30, 5, 4096)
 train_loader, val_loader = get_dataloader(config, args.num_train, args.num_test, args.batch_size, [args.data_file_train, args.data_file_eval])
@@ -82,15 +82,15 @@ for X0, R, Xi0, Xi1, T in train_loader:
     normalized_dis.append(dis/R)
     t.append(T)
 
-import ipdb;ipdb.set_trace()
+# import ipdb;ipdb.set_trace()
 
 normalized_dis = np.concatenate(normalized_dis)
 t = np.concatenate(t)
 
-gammas = PWD(normalized_dis, t)
+gammas, t = PWD(normalized_dis, t)
 
 def save_checkpoint(state, filename='checkpoint.pth.tar'):
     filename = args.log + '/' + filename
     torch.save(state, filename)
 
-save_checkpoint({'epoch': epoch + 1, 'state_dict': [gamms, t]})
+save_checkpoint({'state_dict': [gammas, t]})

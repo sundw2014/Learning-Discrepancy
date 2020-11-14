@@ -8,7 +8,7 @@ class Simulator(object):
         super(Simulator, self).__init__()
         self.simu = TC_Simulate()
     def __call__(self, init, t_max):
-        return self.simu("random", init, t_max)[::10,:]
+        return self.simu("random", init, t_max)[:500,:]#[::10,:]
 
 simulate = Simulator()
 
@@ -44,4 +44,4 @@ def unnormalize(x):
     return (x / normalization_scale) + normalization_offset
 
 normalized_Theta = np.array([normalize(Theta[:,0]), normalize(Theta[:,1])]).T
-normalized_X0_RMAX = 0.6
+normalized_X0_RMAX = np.sqrt(8)

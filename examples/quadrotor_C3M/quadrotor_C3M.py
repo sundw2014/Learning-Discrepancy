@@ -46,7 +46,7 @@ class C3M(object):
 
         w1 = self.model_u_w1(torch.cat([x[:,effective_dim_start:effective_dim_end,:],(x-xe)[:,effective_dim_start:effective_dim_end,:]],dim=1).squeeze(-1)).reshape(bs, -1, n)
         w2 = self.model_u_w2(torch.cat([x[:,effective_dim_start:effective_dim_end,:],(x-xe)[:,effective_dim_start:effective_dim_end,:]],dim=1).squeeze(-1)).reshape(bs, m, -1)
-        u = w2.matmul(torch.tanh(w1.matmul(xe))) + uref
+        u = 0.13*w2.matmul(torch.tanh(w1.matmul(xe))) + uref
 
         u = u.squeeze(0).detach().numpy()
         return u
@@ -71,7 +71,8 @@ class TC_Simulate(object):
             return u
 
         noise = np.zeros([len(self.t), 8])
-        noise_level = 0.1
+        # noise_level = 0.1
+        noise_level = 0.
         num_segs = 20
         segments = np.random.permutation(len(self.t))[:num_segs-1]
         segments.sort()
@@ -119,9 +120,9 @@ if __name__ == '__main__':
         np.random.seed(int(time.time()*1000)%(2**32-1))
         x_nl = simulator("None", 2*(np.random.rand(8) - 0.5), 10)
         x_nl = x_nl[:,1:]
-        track.plot(x_nl[:, 0], x_nl[:, 2], x_nl[:, 4], color="g")
+        track.plot(x_nl[:, 0], x_nl[:, 1], x_nl[:, 2], color="g")
     x_nl = simulator.xref
-    track.plot(x_nl[:, 0], x_nl[:, 2], x_nl[:, 4], color="r")
+    track.plot(x_nl[:, 0], x_nl[:, 1], x_nl[:, 2], color="r")
 
     # track.text(x_nl[0,0], x_nl[0,2], x_nl[0,4], "start", color='red')
     # track.text(x_nl[-1,0], x_nl[-1,2], x_nl[-1,4], "finish", color='red')

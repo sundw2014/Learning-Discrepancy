@@ -8,7 +8,6 @@ from utils import AverageMeter
 from tensorboardX import SummaryWriter
 
 from data import get_dataloader
-from model import get_model
 
 import sys
 sys.path.append('configs')
@@ -22,6 +21,8 @@ parser.add_argument('--config', type=str,
                         default='drone')
 parser.add_argument('--no_cuda', dest='use_cuda', action='store_false')
 parser.set_defaults(use_cuda=True)
+parser.add_argument('--use_spherical', dest='use_spherical', action='store_true')
+parser.set_defaults(use_spherical=False)
 parser.add_argument('--bs', dest='batch_size', type=int, default=256)
 parser.add_argument('--num_train', type=int, default=10)
 parser.add_argument('--num_test', type=int, default=5)
@@ -29,7 +30,7 @@ parser.add_argument('--lr', dest='learning_rate', type=float, default=0.01)
 parser.add_argument('--lambda1', dest='_lambda1', type=float, default=0.1)
 parser.add_argument('--lambda2', dest='_lambda2', type=float, default=0.1)
 parser.add_argument('--alpha', dest='alpha', type=float, default=0.1)
-parser.add_argument('--epochs', type=int, default=30)
+parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--lr_step', type=int, default=5)
 parser.add_argument('--pretrained', type=str)
 parser.add_argument('--data_file_train', type=str)
@@ -38,6 +39,13 @@ parser.add_argument('--log', type=str)
 
 args = parser.parse_args()
 
+# import ipdb;ipdb.set_trace()
+
+if args.use_spherical:
+    from model_spherical import get_model
+else:
+    from model import get_model
+
 os.system('cp *.py '+args.log)
 os.system('cp -r configs/ '+args.log)
 os.system('cp -r examples/ '+args.log)
@@ -45,7 +53,6 @@ os.system('cp -r examples/ '+args.log)
 np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
-
 model, forward = get_model(config.num_dim_input, config.num_dim_output)
 if args.use_cuda:
     model = model.cuda()

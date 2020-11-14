@@ -1,3 +1,4 @@
+# python plot_jetengine.py --config jetengine --pretrained_ours ~/Downloads/log_jetengine-x_0.3_1.3-y_0.3_1.3_ellipsoid/checkpoint.pth.tar --pretrained_spherical ~/Downloads/log_jetengine-x_0.3_1.3-y_0.3_1.3_circle/checkpoint.pth.tar --pretrained_dryvr log_jetEngine_dryvr/checkpoint.pth.tar
 import os
 import torch
 import torch.nn.functional as F
@@ -5,7 +6,29 @@ import numpy as np
 import time
 import importlib
 from tqdm import tqdm
-from mayavi import mlab
+from matplotlib import pyplot as plt
+
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 13
+HUGE_SIZE = 25
+
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=HUGE_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=15)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=5)#15)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=5)#15)    # fontsize of the tick labels
+plt.rc('legend', fontsize=10)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+plt.rc('axes', axisbelow=True)
+
+plt.subplots_adjust(
+    top=0.92,
+    bottom=0.15,
+    left=0.11,
+    right=1.0,
+    hspace=0.2,
+    wspace=0.2)
 
 from model import get_model as get_model_ours
 from model_spherical import get_model as get_model_spherical
@@ -16,6 +39,8 @@ sys.path.append('configs')
 
 import argparse
 
+np.random.seed(1024)
+
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--config', type=str,
                         default='drone')
@@ -24,11 +49,8 @@ parser.set_defaults(use_cuda=True)
 parser.add_argument('--pretrained_ours', type=str)
 parser.add_argument('--pretrained_spherical', type=str)
 parser.add_argument('--pretrained_dryvr', type=str)
-parser.add_argument('--no_plot', type=str)
-parser.add_argument('--seed', type=int, default=1024)
 
 args = parser.parse_args()
-np.random.seed(args.seed)
 
 config = importlib.import_module('config_'+args.config)
 model_ours, forward_ours = get_model_ours(config.num_dim_input, config.num_dim_output)
@@ -101,14 +123,14 @@ def ellipsoid_surface_2D(P):
 simulate = config.simulate
 benchmark_name = args.config
 T_MAX = 10.0
-if hasattr(config, 'T_MAX'):
-    T_MAX = config.T_MAX
 
-normalized_center = np.random.rand(len(config.normalized_Theta[:,0])) * (config.normalized_Theta[:,1] - config.normalized_Theta[:,0]) + config.normalized_Theta[:,0]
 
-normalized_r = np.random.rand() * config.normalized_X0_RMAX
-# normalized_r = np.random.rand() * 0.1
-# normalized_r = 0.1
+# normalized_center = np.random.rand(len(config.normalized_Theta[:,0])) * (config.normalized_Theta[:,1] - config.normalized_Theta[:,0]) + config.normalized_Theta[:,0]
+
+# normalized_r = np.random.rand() * config.normalized_X0_RMAX
+
+normalized_center = np.array([1.,1])
+normalized_r = 0.3
 print(normalized_center, normalized_r)
 
 traces = []
@@ -119,29 +141,17 @@ traces.append(np.array(trace))
 reachsets_ours = []
 reachsets_spherical = []
 reachsets_dryvr = []
-times = [[],[],[]]
 # [trace[0, 1:], np.eye(config.num_dim_output)/normalized_r], ]
 for i in tqdm(range(1, trace.shape[0])):
-    s = time.time()
     P = forward_ours(torch.tensor(config.observe_for_input(trace[0,1:]).tolist() + config.observe_for_input(trace[i,1:]).tolist() + [normalized_r, trace[i,0]]).view(1,-1).cuda().float())
-    e = time.time()
-    times[0].append(e-s)
     P = P.view(config.num_dim_output,config.num_dim_output)
     reachsets_ours.append([trace[i, 1:], P.cpu().detach().numpy()])
 
-    s = time.time()
     P = forward_spherical(torch.tensor(config.observe_for_input(trace[0,1:]).tolist() + config.observe_for_input(trace[i,1:]).tolist() + [normalized_r, trace[i,0]]).view(1,-1).cuda().float())
-    e = time.time()
-    times[1].append(e-s)
-
     P = P.view(config.num_dim_output,config.num_dim_output)
     reachsets_spherical.append([trace[i, 1:], P.cpu().detach().numpy()])
 
-    s = time.time()
     P = forward_dryvr(torch.tensor(config.observe_for_input(trace[0,1:]).tolist() + config.observe_for_input(trace[i,1:]).tolist() + [normalized_r, trace[i,0]]).view(1,-1).cuda().float())
-    e = time.time()
-    times[2].append(e-s)
-
     reachsets_dryvr.append([trace[i, 1:], P])
 
 # from IPython import embed; embed()
@@ -155,49 +165,31 @@ for i in tqdm(range(1, trace.shape[0])):
 #         tmp.append(reachsets[i])
 #reachsets = tmp
 
-print('time: %.lf, %.lf, %.lf'%(np.mean(times[0]), np.mean(times[1]), np.mean(times[2])))
 # from tvtk.api import tvtk
 # mlab.pipeline.user_defined(data, filter=tvtk.CubeAxesActor())
-mlab.figure(1, size=(400, 400), bgcolor=(1, 1, 1), fgcolor=(0,0,0))
-mlab.clf()
 
 # plot the ref trace
 trace = np.array(trace)
 # ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
-if config.num_dim_output == 2:
-    tmp = config.observe_for_output(trace[:,1:])
-    mlab.plot3d(tmp[:,0], tmp[:,1], np.zeros_like(tmp[:,0]), color=(1,0,0))
-elif config.num_dim_output == 3:
-    tmp = config.observe_for_output(trace[:,1:])
-    # mlab.plot3d(tmp[:,0], tmp[:,1], tmp[:,2], color=(1,1,1))
-
-# mlab.outline(s, color=(.7, .7, .7), extent=(0 ,1 , 0 ,1 , 0 ,1))
+tmp = config.observe_for_output(trace[:,1:])
+plt.plot(tmp[:,0], tmp[:,1], 'r-')#, label='ref')
 
 vol_ours = calc_volume([r[1] for r in reachsets_ours])#[10:]])
 vol_spherical = calc_volume([r[1] for r in reachsets_spherical])#[10:]])
 vol_dryvr = calc_volume([r[1] for r in reachsets_dryvr])#[10:]])
 print(vol_ours, vol_dryvr, vol_spherical)
 
-if args.no_plot is not None:
-    exit()
-
 # plot ellipsoids for each time step
-for reachset_ours, reachset_dryvr in zip(reachsets_ours, reachsets_dryvr):
+for reachset_ours, reachset_dryvr, reachset_spherical in zip(reachsets_ours[::10], reachsets_dryvr[::10], reachsets_spherical[::10]):
+    label = reachset_ours is reachsets_ours[0]
     c = config.observe_for_output(reachset_ours[0])
-    if config.num_dim_output == 2:
-        x,y = ellipsoid_surface_2D(reachset_ours[1])
-        mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
-        x,y = ellipsoid_surface_2D(reachset_dryvr[1])
-        s=mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(1,1,0))
-    elif config.num_dim_output == 3:
-        x,y,z = ellipsoid_surface_3D(reachset_ours[1])
-        mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
-        x,y,z = ellipsoid_surface_3D(reachset_dryvr[1])
-        s=mlab.mesh(x+c[0]+2., y+c[1], z+c[2], color=(1,1,0), opacity=0.9)
+    x,y = ellipsoid_surface_2D(reachset_ours[1])
+    plt.plot(x+c[0], y+c[1], 'g-', markersize=1, label='Ours(E)' if label else None)
+    x,y = ellipsoid_surface_2D(reachset_dryvr[1])
+    plt.plot(x+c[0], y+c[1], 'y-', markersize=1, label='DryVR' if label else None)
+    x,y = ellipsoid_surface_2D(reachset_spherical[1])
+    plt.plot(x+c[0], y+c[1], 'b-', markersize=1, label='Ours(B)' if label else None)
 
-mlab.axes(s, color=(.7, .7, .7), extent=(-1, 2, -2, 2, 0, 2), z_axis_visibility=False)
-mlab.show()
-exit()
 sampled_traces = []
 
 # randomly sample some traces
@@ -229,10 +221,18 @@ for _ in range(100):
 # print('over')
 # import ipdb;ipdb.set_trace()
 # from IPython import embed;embed()
+_traces = np.array(sampled_traces)[:,1:,:]
+plt.plot(_traces[:,::10,0], _traces[:,::10,1], 'kx', markersize=1)
+
 ref = config.observe_for_output(trace[1:,1:])
 acc_ours = calc_acc(sampled_traces, [r[1] for r in reachsets_ours], ref)
 acc_spherical = calc_acc(sampled_traces, [r[1] for r in reachsets_spherical], ref)
 acc_dryvr = calc_acc(sampled_traces, [r[1] for r in reachsets_dryvr], ref)
 print(acc_ours, acc_dryvr, acc_spherical)
-
-mlab.show()
+plt.xlim(-2, 1)
+plt.ylim(-3, 0)
+plt.gca().set_aspect('equal', adjustable='box')
+plt.xlabel(r'$x_1$')
+plt.ylabel(r'$x_2$')
+plt.legend(loc='upper left')
+plt.show()

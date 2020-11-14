@@ -42,6 +42,8 @@ class DiscriData(data.Dataset):
     def __init__(self, config, num_traces, num_sampling_balls=100, T_MAX=10.0, data_file=None):
         super(DiscriData, self).__init__()
 
+        if hasattr(config, 'T_MAX'):
+            T_MAX = config.T_MAX
         self.config = config
 
         def sample_X0_center():
