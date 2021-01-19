@@ -18,18 +18,19 @@ np.random.seed(1024)
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--config', type=str,
-                        default='drone')
+                        default='jetengine')
 parser.add_argument('--no_cuda', dest='use_cuda', action='store_false')
 parser.set_defaults(use_cuda=True)
 parser.add_argument('--use_spherical', dest='use_spherical', action='store_true')
 parser.set_defaults(use_spherical=False)
 parser.add_argument('--bs', dest='batch_size', type=int, default=256)
-parser.add_argument('--num_train', type=int, default=10)
-parser.add_argument('--num_test', type=int, default=5)
+parser.add_argument('--num_train', type=int, default=100)
+parser.add_argument('--num_test', type=int, default=10)
 parser.add_argument('--lr', dest='learning_rate', type=float, default=0.01)
 parser.add_argument('--lambda1', dest='_lambda1', type=float, default=0.1)
 parser.add_argument('--lambda2', dest='_lambda2', type=float, default=0.1)
-parser.add_argument('--alpha', dest='alpha', type=float, default=0.1)
+parser.add_argument('--alpha', dest='alpha', type=float, default=0.001)
+parser.add_argument('--eps', dest='eps', type=float, default=0.01)
 parser.add_argument('--epochs', type=int, default=10)
 parser.add_argument('--lr_step', type=int, default=5)
 parser.add_argument('--pretrained', type=str)
@@ -82,6 +83,7 @@ def trainval(epoch, dataloader, writer, training):
     hinge_loss = AverageMeter()
     volume_loss = AverageMeter()
     l2_loss = AverageMeter()
+    error_2 = AverageMeter()
     prec = AverageMeter()
 
     result = [[],[],[],[],[]] # for plotting
@@ -91,47 +93,60 @@ def trainval(epoch, dataloader, writer, training):
     else:
         model.eval()
     end = time.time()
-    for step, (X0, R, Xi0, Xi1, T) in enumerate(dataloader):
-        batch_size = X0.size(0)
+    for step, (X0, R, Xi0, Xis, T) in enumerate(dataloader):
+        batch_size = Xis.size(0)
         time_str = 'data time: %.3f s\t'%(time.time()-end)
         end = time.time()
         if args.use_cuda:
             X0 = X0.cuda()
             R = R.cuda()
             Xi0 = Xi0.cuda()
-            Xi1 = Xi1.cuda()
+            Xis = Xis.cuda()
             T = T.cuda()
         # import ipdb; ipdb.set_trace()
-        TransformMatrix = forward(torch.cat([config.observe_for_input(X0),config.observe_for_input(Xi0),R,T], dim=1))
+        TransformMatrix = forward(torch.cat([config.observe_for_input(X0),config.observe_for_input(Xi0),R,T]).unsqueeze(0))
         time_str += 'forward time: %.3f s\t'%(time.time()-end)
         end = time.time()
 
-        DXi = config.observe_for_output(Xi1 - Xi0)
+        DXi = config.observe_for_output(Xis - Xi0.unsqueeze(0))
         LHS = ((torch.matmul(TransformMatrix, DXi.view(batch_size,-1,1)).view(batch_size,-1)) ** 2).sum(dim=1)
         RHS = torch.ones(LHS.size()).type(DXi.type())
 
         _hinge_loss = hinge_loss_function(LHS, RHS)
-        eps = 0.001
+        saturated_point = 9.
+        eps = args.eps
+        eps = 0.3
+        binary_vars = torch.clamp(1 - torch.exp(-saturated_point / eps * (LHS - (RHS - eps))), 0, 1)
+        prob = binary_vars.sum() / batch_size
+        saturated_prob = 0.1
+        _error_2 = torch.exp(-saturated_point / saturated_prob * prob)
+        # _error_2 = torch.zeros(1).type(_hinge_loss.type())
+
         # _volume_loss = (-torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det())).mean()
-        _volume_loss = -torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs()).mean()
-        _l2_loss = F.mse_loss(LHS, RHS)
+        # _volume_loss = -torch.log((TransformMatrix + 0.01 * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs()).mean()
+        _volume_loss = torch.zeros(1).type(_hinge_loss.type())
+
+        # _l2_loss = F.mse_loss(LHS, RHS)
 
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
-        _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
+        # _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
+        _loss = _hinge_loss + _error_2 + _volume_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)
         hinge_loss.update(_hinge_loss.item(), batch_size)
+        error_2.update(_error_2.item(), batch_size)
         volume_loss.update(_volume_loss.item(), batch_size)
-        l2_loss.update(_l2_loss.item(), batch_size)
+        # l2_loss.update(_l2_loss.item(), batch_size)
 
         if writer is not None and training:
             writer.add_scalar('loss', loss.val, global_step)
             writer.add_scalar('prec', prec.val, global_step)
             writer.add_scalar('Volume_loss', volume_loss.val, global_step)
             writer.add_scalar('Hinge_loss', hinge_loss.val, global_step)
-            writer.add_scalar('L2_loss', l2_loss.val, global_step)
+            writer.add_scalar('Error_2', error_2.val, global_step)
+            # writer.add_scalar('L2_loss', l2_loss.val, global_step)
 
         time_str += 'other time: %.3f s\t'%(time.time()-end)
         c = time.time()
@@ -144,14 +159,16 @@ def trainval(epoch, dataloader, writer, training):
         end = time.time()
         #print(time_str)
 
-    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f, L2_loss: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg, l2_loss.avg))
+    # print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f, L2_loss: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg, l2_loss.avg))
+    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, ERROR_2: %.3f, VOLUME_LOSS: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, error_2.avg, volume_loss.avg))
 
     if writer is not None and not training:
         writer.add_scalar('loss', loss.avg, global_step)
         writer.add_scalar('prec', prec.avg, global_step)
         writer.add_scalar('Volume_loss', volume_loss.avg, global_step)
         writer.add_scalar('Hinge_loss', hinge_loss.avg, global_step)
-        writer.add_scalar('L2_loss', l2_loss.avg, global_step)
+        writer.add_scalar('Error_2', error_2.val, global_step)
+        # writer.add_scalar('L2_loss', l2_loss.avg, global_step)
 
     return result, loss.avg, prec.avg
 

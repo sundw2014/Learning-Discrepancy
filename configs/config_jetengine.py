@@ -4,7 +4,7 @@ from examples.jet_engine import TC_Simulate
 import numpy as np
 
 def simulate(init, t_max):
-    return np.array(TC_Simulate("Default", init, t_max))
+    return np.array(TC_Simulate("Default", init, t_max))[::10,:]
 
 num_dim_state = 2
 num_dim_input = 2

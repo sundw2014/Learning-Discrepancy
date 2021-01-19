@@ -14,32 +14,28 @@ from utils import loadpklz, savepklz
 
 def gen_trace_in_a_ball(num_traces, R_MAX, normalized_Theta, nonzero_dims, unnormalize, simulate, T_MAX, c):
     traces = []
-    for _ in range(num_traces):
+    for id_trace in range(num_traces+1):
         # sample a direction
         d = np.random.randn(len(nonzero_dims))
         d = d / np.sqrt((d**2).sum())
 
-        while True:
-            # import ipdb; ipdb.set_trace()
-            samples = c[nonzero_dims].reshape(1,-1) + R_MAX * np.random.rand(1000,1) * d.reshape(1,-1)
-            tmp = np.tile(normalized_Theta[:,0].reshape(1,-1), (1000, 1))
-            tmp[:, nonzero_dims] = samples
-
-            hit = np.where(np.logical_and(\
-             (samples>=normalized_Theta[:,0].reshape(1,-1)).sum(axis=1) == len(c),
-             (samples<=normalized_Theta[:,1].reshape(1,-1)).sum(axis=1) == len(c)))[0]
-            if len(hit)>0:
-                break
-        # import ipdb; ipdb.set_trace()
-        point = unnormalize(samples[hit[0],:])
+        if np.random.rand() > 0.5:
+            r = R_MAX
+        else:
+            r = R_MAX * np.random.rand()
+        if id_trace == 0:
+            r = 0.
+        sample = c[nonzero_dims].reshape(-1) + r * d.reshape(-1)
+        point = normalized_Theta[:,0].reshape(-1).copy()
+        point[nonzero_dims] = sample
+        point = unnormalize(point)
         _trace = simulate(point.tolist(), T_MAX)
         traces.append(_trace)
-    return traces
-
+    return np.array(traces)
 
 class DiscriData(data.Dataset):
     """DiscriData."""
-    def __init__(self, config, num_traces, num_sampling_balls=100, T_MAX=10.0, data_file=None):
+    def __init__(self, config, num_traces, num_sampling_balls=100, T_MAX=10.0, data_file=None, shuffle=True):
         super(DiscriData, self).__init__()
 
         if hasattr(config, 'T_MAX'):
@@ -55,6 +51,7 @@ class DiscriData(data.Dataset):
         # generate traces
         self.num_sampling_balls = num_sampling_balls
         self.X0_centers = [sample_X0_center() for _ in range(self.num_sampling_balls)]
+        self.X0_rs = [self.config.normalized_X0_RMAX*np.random.rand() for _ in range(self.num_sampling_balls)]
         self.num_traces = num_traces
         self.traces = []
 
@@ -68,63 +65,51 @@ class DiscriData(data.Dataset):
 
         savepklz(self.traces, './traces_%d.pklz'%num_traces)
 
-        self.num_t = len(self.traces[0][0]) - 1
+        self.num_t = self.traces[0].shape[1] - 1
         # from IPython import embed; embed()
+        self.shuffle = shuffle
+        self.idx = 0
+        self.idx_map = []
+        self.len = self.num_sampling_balls * self.num_t
 
     def distance(self, x1, x2):
         return np.sqrt(((np.array(x1) - np.array(x2))**2).sum())
 
-    def __getitem__(self, index):
-        while True:
-            _index = index
-            NB = self.num_sampling_balls
-            NT = self.num_t
-            NTr = self.num_traces
-            ib = _index // (NT * NTr * (NTr - 1))
-            _index = _index % (NT * NTr * (NTr - 1))
-            it =  _index // (NTr * (NTr - 1))
-            it = it + 1
-            _index = _index % (NTr * (NTr - 1))
-            i1 = _index // (NTr - 1)
-            _index = _index % (NTr - 1)
-            i2 = _index
-            i2 = i2 if i2<i1 else i2+1
-
-            trace0 = self.traces[ib][i1]
-            trace1 = self.traces[ib][i2]
-            x0 = trace0[0][1::]
-            x1 = trace1[0][1::]
-            t = trace0[it][0]
-            xi0 = trace0[it][1::]
-            xi1 = trace1[it][1::]
-            r = self.distance(self.config.normalize(x0), self.config.normalize(x1))
-
-            break
-            # eps = 1e-4
-            # if init_r > eps:
-            #     break
-            # else:
-            #     index = (index + 1) % self.__len__()
-        # print(it, i1, i2)
-        return torch.from_numpy(np.array(x0).astype('float32')).view(-1),\
-            torch.from_numpy(np.array(r).astype('float32')).view(-1),\
-            torch.from_numpy(np.array(xi0).astype('float32')).view(-1),\
-            torch.from_numpy(np.array(xi1).astype('float32')).view(-1),\
-            torch.from_numpy(np.array(t).astype('float32')).view(-1),\
-            #TODO normalization
-
     def __len__(self):
-        return self.num_sampling_balls * self.num_t * self.num_traces * (self.num_traces - 1)
+        return self.len
+
+    def __iter__(self):
+        if self.shuffle:
+            self.idx_map = np.random.permutation(self.len)
+        else:
+            self.idx_map = np.array(range(self.len))
+        self.idx = 0
+        return self
+
+    def __next__(self):
+        if self.idx < self.len:
+            idx = self.idx_map[self.idx]
+            self.idx += 1
+            idx_trace = idx // self.num_t
+            idx_t = idx % self.num_t + 1
+            traces = self.traces[idx_trace]
+            x0 = traces[0,0,1::]
+            r = self.X0_rs[idx_trace]
+            t = traces[0,idx_t,0]
+            xi0 = traces[0,idx_t,1::]
+            xi1s = traces[1:,idx_t,1::]
+            return torch.from_numpy(np.array(x0).astype('float32')).view(-1),\
+                torch.from_numpy(np.array(r).astype('float32')).view(-1),\
+                torch.from_numpy(np.array(xi0).astype('float32')).view(-1),\
+                torch.from_numpy(np.array(xi1s).astype('float32')),\
+                torch.from_numpy(np.array(t).astype('float32')).view(-1)
+        else:
+            self.idx = 0
+            raise StopIteration
 
 def get_dataloader(config, num_traces_train, num_traces_val, batch_size=16, data_file=[None, None]):
-    train_loader = torch.utils.data.DataLoader(
-        DiscriData(config, num_traces_train, data_file=data_file[0]), batch_size=batch_size, shuffle=True,
-        num_workers=20, pin_memory=True)
-
-    val_loader = torch.utils.data.DataLoader(
-        DiscriData(config, num_traces_val, data_file=data_file[1]), batch_size=batch_size, shuffle=True,
-        num_workers=20, pin_memory=True)
-
+    train_loader = DiscriData(config, num_traces_train, num_sampling_balls=batch_size, data_file=data_file[0], shuffle=True)
+    val_loader = DiscriData(config, num_traces_val, num_sampling_balls=batch_size, data_file=data_file[0], shuffle=True)
     return train_loader, val_loader
 
 if __name__ == '__main__':
