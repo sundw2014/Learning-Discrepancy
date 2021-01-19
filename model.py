@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 def get_model(num_dim_input, num_dim_output):
     model = torch.nn.Sequential(
-            torch.nn.Linear(num_dim_input*2+1+1, 128, bias=False),
+            torch.nn.Linear(num_dim_input, 128, bias=False),
             # torch.nn.BatchNorm1d(300),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(128, 512, bias=False),
