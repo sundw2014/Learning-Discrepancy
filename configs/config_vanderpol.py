@@ -3,35 +3,49 @@ sys.path.append('..')
 from examples.vanderpol import TC_Simulate
 import numpy as np
 
-def simulate(init, t_max):
-    return np.array(TC_Simulate("Default", init, t_max))
-
-num_dim_state = 2
-num_dim_input = 2
-num_dim_output = 2
-def observe_for_output(state):
-    return state
-
-def observe_for_input(state):
-    return state
+TMAX = 4.
+dt = 0.05
 
 # range of initial states
-Theta_lower = np.array([0., 0])
-Theta_higher = np.array([1., 1])
-Theta = np.array([Theta_lower, Theta_higher]).T
+lower = np.array([0., 0.])
+higher = np.array([1., 1.])
+X0_center_range = np.array([lower, higher]).T
+X0_r_max = 0.5
 
-# normlization
-normalization_scale = np.array([1.,1])
-normalization_offset = np.zeros(num_dim_state)
+def sample_X0():
+    center = X0_center_range[:,0] + np.random.rand(X0_center_range.shape[0]) * (X0_center_range[:,1]-X0_center_range[:,0])
+    r = np.random.rand()*X0_r_max
+    X0 = np.concatenate([center, np.array(r).reshape(-1)])
+    return X0
 
-nonzero_dims = (Theta[:,1] - Theta[:,0]) > 0
+def sample_t():
+    return (np.random.randint(int(TMAX/dt))+1) * dt
 
-def normalize(x):
-    return (x - normalization_offset) * normalization_scale
+def sample_x0(X0):
+    center = X0[:-1]
+    r = X0[-1]
 
-def unnormalize(x):
-    return (x / normalization_scale) + normalization_offset
+    n = len(center)
+    direction = np.random.randn(n)
+    direction = direction / np.linalg.norm(direction)
 
-T_MAX = 4.
-normalized_Theta = np.array([normalize(Theta[:,0]), normalize(Theta[:,1])]).T
-normalized_X0_RMAX = 0.5
+    if np.random.rand() > 0.5:
+        dist = 1.
+    else:
+        dist = np.random.rand()
+    x0 = center + direction * dist * r
+    x0[x0>X0_center_range[:,1]] = X0_center_range[x0>X0_center_range[:,1],1]
+    x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
+    return x0
+
+def simulate(x0):
+    return np.array(TC_Simulate("Default", x0, TMAX))
+
+def get_init_center(X0):
+    center = X0[:-1]
+    return center
+
+def get_X0_normalization_factor():
+    mean = np.zeros(len(sample_X0()))
+    std = np.ones(len(sample_X0()))
+    return [mean, std]

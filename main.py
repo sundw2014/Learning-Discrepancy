@@ -27,7 +27,7 @@ parser.add_argument('--bs', dest='batch_size', type=int, default=256)
 parser.add_argument('--num_train', type=int, default=100)
 parser.add_argument('--num_test', type=int, default=10)
 parser.add_argument('--lr', dest='learning_rate', type=float, default=0.01)
-parser.add_argument('--lambda1', dest='_lambda1', type=float, default=0.1)
+parser.add_argument('--lambda', dest='_lambda', type=float, default=0.1)
 parser.add_argument('--lambda2', dest='_lambda2', type=float, default=0.1)
 parser.add_argument('--alpha', dest='alpha', type=float, default=0.001)
 parser.add_argument('--eps', dest='eps', type=float, default=0.01)
@@ -54,7 +54,7 @@ os.system('cp -r examples/ '+args.log)
 np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
-model, forward = get_model(len(config.sample_D0_from_P())+1, config.sample_ref(config.sample_D0_from_P()).shape[1]-1)
+model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
 if args.use_cuda:
     model = model.cuda()
 
@@ -93,17 +93,17 @@ def trainval(epoch, dataloader, writer, training):
     else:
         model.eval()
     end = time.time()
-    for step, (D0, t, ref, xt) in enumerate(dataloader):
-        batch_size = D0.size(0)
+    for step, (X0, t, ref, xt) in enumerate(dataloader):
+        batch_size = X0.size(0)
         time_str = 'data time: %.3f s\t'%(time.time()-end)
         end = time.time()
         if args.use_cuda:
-            D0 = D0.cuda()
+            X0 = X0.cuda()
             t = t.cuda()
             ref = ref.cuda()
             xt = xt.cuda()
         # import ipdb; ipdb.set_trace()
-        TransformMatrix = forward(torch.cat([D0,t], dim=1))
+        TransformMatrix = forward(torch.cat([X0,t], dim=1))
         time_str += 'forward time: %.3f s\t'%(time.time()-end)
         end = time.time()
 
@@ -113,7 +113,7 @@ def trainval(epoch, dataloader, writer, training):
 
         _hinge_loss = hinge_loss_function(LHS, RHS)
         # _volume_loss = (-torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det())).mean()
-        _volume_loss = -torch.log((TransformMatrix + 0.01 * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(D0.type())).det().abs()).mean()
+        _volume_loss = -torch.log((TransformMatrix + 0.01 * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs()).mean()
         # _volume_loss = torch.zeros(1).type(_hinge_loss.type())
 
         # _l2_loss = F.mse_loss(LHS, RHS)
@@ -121,7 +121,7 @@ def trainval(epoch, dataloader, writer, training):
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
         # _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
-        _loss = _hinge_loss + _volume_loss
+        _loss = _hinge_loss + args._lambda * _volume_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)

@@ -18,23 +18,18 @@ vt_rmax = 30
 X0_center_range = np.array([[alt_min, alt_max], [vt_min, vt_max]])
 X0_r_max = np.array([alt_rmax, vt_rmax])
 
-def sample_t_from_P():
-    return (np.random.randint(int(TMAX/dt))+1) * dt
-
-def sample_D0_from_P():
+def sample_X0():
     center = X0_center_range[:,0] + np.random.rand(X0_center_range.shape[0]) * (X0_center_range[:,1]-X0_center_range[:,0])
     r = np.random.rand(len(X0_r_max))*X0_r_max
     return np.concatenate([center, r])
 
-def get_D0_normalization_factor():
-    mean = np.concatenate([X0_center_range.mean(axis=1), X0_r_max/2])
-    std = np.concatenate([(X0_center_range[:,1]-X0_center_range[:,0])/2, X0_r_max/2])
-    return [mean, std]
+def sample_t():
+    return (np.random.randint(int(TMAX/dt))+1) * dt
 
-def sample_from_D0(D0):
+def sample_x0(X0):
     n = len(X0_r_max)
-    center = D0[:n]
-    r = D0[n:]
+    center = X0[:n]
+    r = X0[n:]
 
     dist = (np.random.rand(n)-0.5)*2
 
@@ -47,7 +42,7 @@ def sample_from_D0(D0):
     x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
     return x0
 
-def sample_traj(x0):
+def simulate(x0):
     ### Initial Conditions ###
     power = 9 # engine power level (0-10)
     # Default alpha & beta
@@ -82,9 +77,12 @@ def sample_traj(x0):
     traj = np.concatenate([np.array(res['times']).reshape(-1,1), states[:,[11, 0]]], axis=1)
     return traj
 
-def sample_ref(D0):
+def get_init_center(X0):
     n = len(X0_r_max)
-    center = D0[:n]
-    r = D0[n:]
+    center = X0[:n]
+    return center
 
-    return sample_traj(center)
+def get_X0_normalization_factor():
+    mean = np.concatenate([X0_center_range.mean(axis=1), X0_r_max/2])
+    std = np.concatenate([(X0_center_range[:,1]-X0_center_range[:,0])/2, X0_r_max/2])
+    return [mean, std]

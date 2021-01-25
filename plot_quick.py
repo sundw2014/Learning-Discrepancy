@@ -28,7 +28,7 @@ args = parser.parse_args()
 np.random.seed(args.seed)
 
 config = importlib.import_module('config_'+args.config)
-model, forward = get_model(len(config.sample_D0_from_P())+1, config.sample_ref(config.sample_D0_from_P()).shape[1]-1)
+model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
 if args.use_cuda:
     model = model.cuda()
 torch.backends.cudnn.benchmark = True
@@ -85,19 +85,19 @@ def ellipsoid_surface_2D(P):
     points = np.linalg.inv(P).dot(points.T)
     return points[0,:], points[1,:]
 
-D0 = config.sample_D0_from_P()
-ref = config.sample_ref(D0)
-sampled_trajs = [config.sample_traj(config.sample_from_D0(D0)) for _ in range(100)]
+X0 = config.sample_X0()
+ref = config.simulate(config.get_init_center(X0))
+sampled_trajs = [config.simulate(config.sample_x0(X0)) for _ in range(100)]
 benchmark_name = args.config
 
 reachsets = []
 
-D0_mean, D0_std = config.get_D0_normalization_factor()
-D0 = (D0 - D0_mean) / D0_std
+X0_mean, X0_std = config.get_X0_normalization_factor()
+X0 = (X0 - X0_mean) / X0_std
 
 for idx_t in tqdm(range(1, ref.shape[0])):
     s = time.time()
-    P = forward(torch.tensor(D0.tolist()+[ref[idx_t, 0],]).view(1,-1).cuda().float())
+    P = forward(torch.tensor(X0.tolist()+[ref[idx_t, 0],]).view(1,-1).cuda().float())
     e = time.time()
     # times[0].append(e-s)
     P = P.squeeze(0)
