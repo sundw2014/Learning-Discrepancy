@@ -29,11 +29,12 @@ def sample_x0(X0):
     direction = np.random.randn(n)
     direction = direction / np.linalg.norm(direction)
 
-    if np.random.rand() > 0.5:
-        dist = 1.
-    else:
-        dist = np.random.rand()
-    x0 = center + direction * dist * r
+    # if np.random.rand() > 0.5:
+    #     dist = 1.
+    # else:
+    #     dist = np.random.rand()
+    # x0 = center + direction * dist * r
+    x0 = center + direction * r
     x0[x0>X0_center_range[:,1]] = X0_center_range[x0>X0_center_range[:,1],1]
     x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
     return x0

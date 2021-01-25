@@ -18,7 +18,7 @@ class Model(object):
         exp = (self.dt[:idx] * self.gammas[:idx]).sum() if idx > 0 else 0
         exp += (t - self.t[idx]) * (self.gammas[idx] if idx < len(self.gammas) else 0.)
         dis = r*K*np.exp(exp)
-        return 1/dis*np.eye(self.num_dim_output)
+        return torch.from_numpy(1/dis*np.eye(self.num_dim_output)).unsqueeze(0)
 
     def load_state_dict(self, state_dict):
         self.gammas = state_dict[0]

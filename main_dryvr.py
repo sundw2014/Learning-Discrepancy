@@ -46,38 +46,42 @@ np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
 
+ACC = 0.95
+
 def PWD(normalized_dis, t):
-    T = len(set(t.tolist()))
-    N = int(len(t) / T)
-    assert len(t) == T*N
-    idx = t.argsort()
-    t = t[idx]
-    normalized_dis = normalized_dis[idx]
-    t = t.reshape(T,N)[:,0]
-    normalized_dis = normalized_dis.reshape(T,N)
-    # normalized_dis: N x T
-    normalized_dis = normalized_dis.max(axis = 1)
-    t = np.array([0,] + t.tolist())
-    normalized_dis = np.array([1., ] + normalized_dis.tolist())
-    y = np.log(normalized_dis)
+    T = np.sort(list(set(t.tolist())))
+    num_t = len(T)
+    DIS = np.zeros(num_t)
+    for idx_t in range(num_t):
+        idx = np.where(t==T[idx_t])[0]
+        dis = normalized_dis[idx]
+        dis = np.sort(dis)
+        idx = int(len(dis)*ACC)
+        DIS[idx_t] = dis[idx]
+
+    # import ipdb;ipdb.set_trace()
+
+    T = np.array([0,] + T.tolist())
+    DIS = np.array([1, ] + DIS.tolist())
+    y = np.log(DIS)
     K = 1
     y = y-np.log(K)
     dy = y[1:] - y[:-1]
-    dt = t[1:] - t[:-1]
+    dt = T[1:] - T[:-1]
 
     gamma = dy / dt
 
-    return gamma, t
+    return gamma, T
 
 # train_loader, val_loader = get_dataloader(30, 5, 4096)
 train_loader, val_loader = get_dataloader(config, args.num_train, args.num_test, args.batch_size, [args.data_file_train, args.data_file_eval])
 
 normalized_dis = []
 t = []
-for X0, R, Xi0, Xi1, T in train_loader:
-    DXi = config.observe_for_output(Xi1 - Xi0).cpu().detach().numpy()
+for (X0, T, ref, xt) in train_loader:
+    DXi = (xt - ref).cpu().detach().numpy()
     dis = np.sqrt((DXi**2).sum(axis=1)).reshape(-1)
-    R = R.cpu().detach().numpy().reshape(-1)
+    R = X0[:,-1].cpu().detach().numpy().reshape(-1)
     T = T.cpu().detach().numpy().reshape(-1)
     normalized_dis.append(dis/R)
     t.append(T)

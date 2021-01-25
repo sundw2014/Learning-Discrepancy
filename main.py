@@ -73,7 +73,7 @@ def save_checkpoint(state, filename='checkpoint.pth.tar'):
 def hinge_loss_function(LHS, RHS):
     res = LHS - RHS + args.alpha
     res[res<0] = 0
-    return res.mean()
+    return res
 
 global_step = 0
 
@@ -113,22 +113,26 @@ def trainval(epoch, dataloader, writer, training):
 
         _hinge_loss = hinge_loss_function(LHS, RHS)
         # _volume_loss = (-torch.log((TransformMatrix + eps * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det())).mean()
-        _volume_loss = -torch.log((TransformMatrix + 0.01 * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs()).mean()
+        _volume_loss = -torch.log((TransformMatrix + 0.01 * torch.eye(TransformMatrix.shape[-1]).unsqueeze(0).type(X0.type())).det().abs())
+        mask = _hinge_loss > 0
+        _volume_loss[mask] = 0.
+        _hinge_loss = _hinge_loss.mean()
+        _volume_loss = _volume_loss.mean()
         # _volume_loss = torch.zeros(1).type(_hinge_loss.type())
 
-        # _l2_loss = F.mse_loss(LHS, RHS)
+        _l2_loss = F.mse_loss(LHS, RHS)
 
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
         # _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
-        _loss = _hinge_loss + args._lambda * _volume_loss
+        _loss = _hinge_loss + args._lambda * _volume_loss# + args._lambda2 * _l2_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)
         hinge_loss.update(_hinge_loss.item(), batch_size)
         # error_2.update(_error_2.item(), batch_size)
         volume_loss.update(_volume_loss.item(), batch_size)
-        # l2_loss.update(_l2_loss.item(), batch_size)
+        l2_loss.update(_l2_loss.item(), batch_size)
 
         if writer is not None and training:
             writer.add_scalar('loss', loss.val, global_step)
@@ -136,7 +140,7 @@ def trainval(epoch, dataloader, writer, training):
             writer.add_scalar('Volume_loss', volume_loss.val, global_step)
             writer.add_scalar('Hinge_loss', hinge_loss.val, global_step)
             # writer.add_scalar('Error_2', error_2.val, global_step)
-            # writer.add_scalar('L2_loss', l2_loss.val, global_step)
+            writer.add_scalar('L2_loss', l2_loss.val, global_step)
 
         time_str += 'other time: %.3f s\t'%(time.time()-end)
         c = time.time()
@@ -151,7 +155,7 @@ def trainval(epoch, dataloader, writer, training):
 
     # print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f, L2_loss: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg, l2_loss.avg))
     # print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, ERROR_2: %.3f, VOLUME_LOSS: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, error_2.avg, volume_loss.avg))
-    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg))
+    print('Loss: %.3f, PREC: %.3f, HINGE_LOSS: %.3f, VOLUME_LOSS: %.3f, L2_loss: %.3f'%(loss.avg, prec.avg, hinge_loss.avg, volume_loss.avg, l2_loss.avg))
 
     if writer is not None and not training:
         writer.add_scalar('loss', loss.avg, global_step)
@@ -159,7 +163,7 @@ def trainval(epoch, dataloader, writer, training):
         writer.add_scalar('Volume_loss', volume_loss.avg, global_step)
         writer.add_scalar('Hinge_loss', hinge_loss.avg, global_step)
         # writer.add_scalar('Error_2', error_2.val, global_step)
-        # writer.add_scalar('L2_loss', l2_loss.avg, global_step)
+        writer.add_scalar('L2_loss', l2_loss.avg, global_step)
 
     return result, loss.avg, prec.avg
 

@@ -9,6 +9,7 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 
 from model import get_model
+from model_dryvr import get_model as get_model_dryvr
 
 import sys
 sys.path.append('configs')
@@ -28,11 +29,16 @@ args = parser.parse_args()
 np.random.seed(args.seed)
 
 config = importlib.import_module('config_'+args.config)
-model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
-if args.use_cuda:
-    model = model.cuda()
-torch.backends.cudnn.benchmark = True
-model = torch.nn.DataParallel(model)
+use_dryvr = 'dryvr' in args.pretrained
+if use_dryvr:
+    model, forward = get_model_dryvr(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
+else:
+    model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
+    if args.use_cuda:
+        model = model.cuda()
+    torch.backends.cudnn.benchmark = True
+    model = torch.nn.DataParallel(model)
+
 model.load_state_dict(torch.load(args.pretrained)['state_dict'])
 
 def calc_volume(Ps):
@@ -49,9 +55,10 @@ def calc_volume(Ps):
     return vol
 
 def calc_acc(sampled_traces, Ps, ref):
+    # import ipdb; ipdb.set_trace()
     ref = np.array(ref) # T x n
-    trj = np.array(sampled_traces)[:,1:,:].transpose([1,2,0]) # T x n x N
-    trj = trj - np.expand_dims(ref, -1)
+    trj = np.array(sampled_traces)[:,:,1:].transpose([1,2,0]) # T x n x N
+    trj = trj - np.expand_dims(ref[:,1:], -1)
     Ps = np.array(Ps) # T x n x n
     Px = np.matmul(Ps,trj) # T x n x N
     Pxn = (Px**2).sum(axis=1).reshape(-1)
@@ -86,6 +93,7 @@ def ellipsoid_surface_2D(P):
     return points[0,:], points[1,:]
 
 X0 = config.sample_X0()
+# print(X0)
 ref = config.simulate(config.get_init_center(X0))
 sampled_trajs = [config.simulate(config.sample_x0(X0)) for _ in range(100)]
 benchmark_name = args.config
@@ -95,7 +103,8 @@ reachsets = []
 X0_mean, X0_std = config.get_X0_normalization_factor()
 X0 = (X0 - X0_mean) / X0_std
 
-for idx_t in tqdm(range(1, ref.shape[0])):
+# for idx_t in tqdm(range(1, ref.shape[0])):
+for idx_t in range(1, ref.shape[0]):
     s = time.time()
     P = forward(torch.tensor(X0.tolist()+[ref[idx_t, 0],]).view(1,-1).cuda().float())
     e = time.time()
@@ -120,7 +129,6 @@ elif ref.shape[1]-1 == 3:
 # mlab.outline(s, color=(.7, .7, .7), extent=(0 ,1 , 0 ,1 , 0 ,1))
 
 vol = calc_volume([r[1] for r in reachsets])
-print('volume:', vol)
 
 # plot ellipsoids for each time step
 for reachset in reachsets:
@@ -147,11 +155,11 @@ for sampled_traj in sampled_trajs:
 # import ipdb;ipdb.set_trace()
 # from IPython import embed;embed()
 # ref = config.observe_for_output(trace[1:,1:])
-# acc_ours = calc_acc(sampled_traces, [r[1] for r in reachsets_ours], ref)
+acc = calc_acc(np.array(sampled_trajs)[:, 1:, :], [r[1] for r in reachsets], ref[1:,:])
 # acc_spherical = calc_acc(sampled_traces, [r[1] for r in reachsets_spherical], ref)
 # acc_dryvr = calc_acc(sampled_traces, [r[1] for r in reachsets_dryvr], ref)
-# print(acc_ours, acc_dryvr, acc_spherical)
+print(vol, acc)
 
 # mlab.show()
 # plt.plot([0,1], [1,0])
-plt.show()
+# plt.show()
