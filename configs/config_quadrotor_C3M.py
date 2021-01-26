@@ -3,45 +3,56 @@ sys.path.append('..')
 from examples.quadrotor_C3M import TC_Simulate
 import numpy as np
 
+TMAX = 10.
+dt = 0.01
+
+# range of initial states
+lower = np.array([-1.,]*8)
+higher = np.array([1.,]*8)
+X0_center_range = np.array([lower, higher]).T
+X0_r_max = np.sqrt(8)
+
+def sample_X0():
+    center = X0_center_range[:,0] + np.random.rand(X0_center_range.shape[0]) * (X0_center_range[:,1]-X0_center_range[:,0])
+    r = np.random.rand()*X0_r_max
+    X0 = np.concatenate([center, np.array(r).reshape(-1)])
+    return X0
+
+def sample_t():
+    return (np.random.randint(int(TMAX/dt))+1) * dt
+
+def sample_x0(X0):
+    center = X0[:-1]
+    r = X0[-1]
+
+    n = len(center)
+    direction = np.random.randn(n)
+    direction = direction / np.linalg.norm(direction)
+
+    # if np.random.rand() > 0.5:
+    #     dist = 1.
+    # else:
+    #     dist = np.random.rand()
+    # x0 = center + direction * dist * r
+    x0 = center + direction * r
+    x0[x0>X0_center_range[:,1]] = X0_center_range[x0>X0_center_range[:,1],1]
+    x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
+    return x0
+
 class Simulator(object):
     def __init__(self):
         super(Simulator, self).__init__()
         self.simu = TC_Simulate()
-    def __call__(self, init, t_max):
-        return self.simu("random", init, t_max)[:500,:]#[::10,:]
+    def __call__(self, init):
+        return self.simu("random", init, TMAX)[:,:3]#[:500,:]#[::10,:]
 
 simulate = Simulator()
 
-num_dim_state = 8
-num_dim_input = 8
-num_dim_output = 3
-def observe_for_output(state):
-    if len(state.shape) == 1:
-        return state[:3]
-    elif len(state.shape) == 2:
-        return state[:,:3]
-    else:
-        raise ValueError('wrong state.shape')
+def get_init_center(X0):
+    center = X0[:-1]
+    return center
 
-def observe_for_input(state):
-    return state
-
-# range of initial states
-Theta_lower = np.array([-1.,]*8)
-Theta_higher = np.array([1.,]*8)
-Theta = np.array([Theta_lower, Theta_higher]).T
-
-# normlization
-normalization_scale = np.array([1.,]*8)
-normalization_offset = np.zeros(num_dim_state)
-
-nonzero_dims = (Theta[:,1] - Theta[:,0]) > 0
-
-def normalize(x):
-    return (x - normalization_offset) * normalization_scale
-
-def unnormalize(x):
-    return (x / normalization_scale) + normalization_offset
-
-normalized_Theta = np.array([normalize(Theta[:,0]), normalize(Theta[:,1])]).T
-normalized_X0_RMAX = np.sqrt(8)
+def get_X0_normalization_factor():
+    mean = np.zeros(len(sample_X0()))
+    std = np.ones(len(sample_X0()))
+    return [mean, std]

@@ -46,7 +46,7 @@ class C3M(object):
 
         w1 = self.model_u_w1(torch.cat([x[:,effective_dim_start:effective_dim_end,:],(x-xe)[:,effective_dim_start:effective_dim_end,:]],dim=1).squeeze(-1)).reshape(bs, -1, n)
         w2 = self.model_u_w2(torch.cat([x[:,effective_dim_start:effective_dim_end,:],(x-xe)[:,effective_dim_start:effective_dim_end,:]],dim=1).squeeze(-1)).reshape(bs, m, -1)
-        u = 0.13*w2.matmul(torch.tanh(w1.matmul(xe))) + uref
+        u = w2.matmul(torch.tanh(w1.matmul(xe))) + uref
 
         u = u.squeeze(0).detach().numpy()
         return u
@@ -60,6 +60,8 @@ class TC_Simulate(object):
         self.uref = ref['uref']
         self.t = ref['t']
         self.time_step = self.t[1] - self.t[0]
+        # print('time_step', self.time_step)
+        # print('t_max', self.t[-1])
 
     def __call__(self, Mode, initialCondition, time_bound):
         def u(x, t):
@@ -71,8 +73,8 @@ class TC_Simulate(object):
             return u
 
         noise = np.zeros([len(self.t), 8])
-        # noise_level = 0.1
-        noise_level = 0.
+        noise_level = 0.1
+        # noise_level = 0.
         num_segs = 20
         segments = np.random.permutation(len(self.t))[:num_segs-1]
         segments.sort()

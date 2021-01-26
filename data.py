@@ -40,9 +40,10 @@ class DiscriData(data.Dataset):
             [self.traces, self.data] = loadpklz(data_file)
         else:
             func = partial(sample_trajs, num_traces, self.config.sample_x0, self.config.simulate, self.config.get_init_center)
-            with Pool(min([1, multiprocessing.cpu_count()-3]), initializer=mute) as p:
-                self.traces = list(tqdm.tqdm(p.imap(func, self.X0s), total=len(self.X0s)))
-            # self.traces = list(tqdm.tqdm(map(func, self.X0s), total=len(self.X0s)))
+            # num_proc = min([1, multiprocessing.cpu_count()-3])
+            # with Pool(num_proc, initializer=mute) as p:
+            #     self.traces = list(tqdm.tqdm(p.imap(func, self.X0s), total=len(self.X0s)))
+            self.traces = list(tqdm.tqdm(map(func, self.X0s), total=len(self.X0s)))
 
             # import ipdb; ipdb.set_trace()
 

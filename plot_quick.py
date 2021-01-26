@@ -7,6 +7,8 @@ import importlib
 from tqdm import tqdm
 # from mayavi import mlab
 from matplotlib import pyplot as plt
+import multiprocessing
+from multiprocessing import Pool
 
 from model import get_model
 from model_dryvr import get_model as get_model_dryvr
@@ -95,7 +97,12 @@ def ellipsoid_surface_2D(P):
 X0 = config.sample_X0()
 # print(X0)
 ref = config.simulate(config.get_init_center(X0))
-sampled_trajs = [config.simulate(config.sample_x0(X0)) for _ in range(100)]
+sampled_inits = [config.sample_x0(X0) for _ in range(100)]
+# num_proc = min([1, multiprocessing.cpu_count()-3])
+# with Pool(num_proc) as p:
+    # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
+sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
+
 benchmark_name = args.config
 
 reachsets = []
@@ -123,8 +130,8 @@ for idx_t in range(1, ref.shape[0]):
 if ref.shape[1]-1 == 2:
     # mlab.plot3d(ref[:,1], ref[:,2], np.zeros_like(ref[:,0]), color=(1,0,0))
     plt.plot(ref[:,1], ref[:,2], color=(1,0,0))
-elif ref.shape[1]-1 == 3:
-    mlab.plot3d(ref[:,1], ref[:,2], ref[:,3], color=(1,1,1))
+# elif ref.shape[1]-1 == 3:
+#     mlab.plot3d(ref[:,1], ref[:,2], ref[:,3], color=(1,1,1))
 
 # mlab.outline(s, color=(.7, .7, .7), extent=(0 ,1 , 0 ,1 , 0 ,1))
 
@@ -137,9 +144,9 @@ for reachset in reachsets:
         x,y = ellipsoid_surface_2D(reachset[1])
         # mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
         plt.plot(x+c[0], y+c[1], color=(0,1,0))
-    elif ref.shape[1]-1 == 3:
-        x,y,z = ellipsoid_surface_3D(reachset[1])
-        mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
+    # elif ref.shape[1]-1 == 3:
+    #     x,y,z = ellipsoid_surface_3D(reachset[1])
+    #     mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
 
 # mlab.axes(s, color=(.7, .7, .7), extent=(-1, 2, -2, 2, 0, 2), z_axis_visibility=False)
 # mlab.show()
@@ -149,8 +156,8 @@ for sampled_traj in sampled_trajs:
     if ref.shape[1]-1 == 2:
         # mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], np.zeros_like(sampled_traj[:,1]), color=(0,0,1), line_width=0.05)
         plt.plot(sampled_traj[:,1], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
-    elif ref.shape[1]-1 == 3:
-        mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], sampled_traj[:,3], color=(0,0,1), line_width=0.05)
+    # elif ref.shape[1]-1 == 3:
+    #     mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], sampled_traj[:,3], color=(0,0,1), line_width=0.05)
 # print('over')
 # import ipdb;ipdb.set_trace()
 # from IPython import embed;embed()
