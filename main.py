@@ -54,7 +54,7 @@ os.system('cp -r examples/ '+args.log)
 np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
-model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
+model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1, config)
 if args.use_cuda:
     model = model.cuda()
 

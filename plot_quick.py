@@ -16,6 +16,9 @@ from model_dryvr import get_model as get_model_dryvr
 import sys
 sys.path.append('configs')
 
+def mute():
+    sys.stdout = open(os.devnull, 'w')
+
 import argparse
 
 parser = argparse.ArgumentParser(description="")
@@ -35,7 +38,7 @@ use_dryvr = 'dryvr' in args.pretrained
 if use_dryvr:
     model, forward = get_model_dryvr(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
 else:
-    model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
+    model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1, config)
     if args.use_cuda:
         model = model.cuda()
     torch.backends.cudnn.benchmark = True
@@ -98,10 +101,10 @@ X0 = config.sample_X0()
 # print(X0)
 ref = config.simulate(config.get_init_center(X0))
 sampled_inits = [config.sample_x0(X0) for _ in range(100)]
-# num_proc = min([1, multiprocessing.cpu_count()-3])
-# with Pool(num_proc) as p:
-    # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
-sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
+num_proc = min([1, multiprocessing.cpu_count()-3])
+with Pool(num_proc, initializer=mute) as p:
+    sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
+# sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
 
 benchmark_name = args.config
 
