@@ -11,7 +11,7 @@ dt = 1/30.
 lower = np.array([560, -0.1, 0,       -np.pi/4, -0.1, 70])
 higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
 X0_center_range = np.array([lower, higher]).T
-X0_r_max = np.array([10,   0.1, np.pi/16, np.pi/8,  0.1, 1])
+X0_r_max = np.array([10,   0.1, np.pi/8, np.pi/4,  0.1, 1])
 
 def sample_X0():
     center = X0_center_range[:,0] + np.random.rand(X0_center_range.shape[0]) * (X0_center_range[:,1]-X0_center_range[:,0])
