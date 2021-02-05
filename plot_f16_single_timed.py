@@ -102,7 +102,7 @@ higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
 c = (lower+higher)/2
 X0_r_max = np.array([10,   0.1, np.pi/16, np.pi/8,  0.1, 1])
 
-r = [5, 0.05, 0.2, 0.2, 0.05, 0.5]
+r = [10, 0.05, 0.2, 0.2, 0.05, 0.5]
 X0 = np.array(c.tolist()+r)
 # X0 = config.sample_X0()
 print(X0)
@@ -136,49 +136,58 @@ for idx_t in range(1, ref.shape[0]):
 # mlab.figure(1, size=(400, 400), bgcolor=(1, 1, 1), fgcolor=(0,0,0))
 # mlab.clf()
 
-# import ipdb;ipdb.set_trace()
-# plot the ref trace
-# ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
-if ref.shape[1]-1 == 2:
-    # mlab.plot3d(ref[:,1], ref[:,2], np.zeros_like(ref[:,0]), color=(1,0,0))
-    plt.plot(ref[:,1], ref[:,2], color=(1,0,0))
-# elif ref.shape[1]-1 == 3:
-#     mlab.plot3d(ref[:,1], ref[:,2], ref[:,3], color=(1,1,1))
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 13
+HUGE_SIZE = 25
 
-# mlab.outline(s, color=(.7, .7, .7), extent=(0 ,1 , 0 ,1 , 0 ,1))
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=HUGE_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=15)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=15)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=15)    # fontsize of the tick labels
+plt.rc('legend', fontsize=10)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+plt.rc('axes', axisbelow=True)
 
-vol = calc_volume([r[1] for r in reachsets])
 
-# plot ellipsoids for each time step
+plt.figure()
+
+# plt.subplots_adjust(
+#     top=0.909,
+#     bottom=0.132,
+#     left=0.133,
+#     right=0.893,
+#     hspace=0.2,
+#     wspace=0.2)
+
+alt = [[(c-r)[-1], (c+r)[-1]],]
+vt = [[(c-r)[0], (c+r)[0]],]
 for reachset in reachsets:
     c = reachset[0]
-    if ref.shape[1]-1 == 2:
-        x,y = ellipsoid_surface_2D(reachset[1])
-        # mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
-        plt.plot(x+c[0], y+c[1], color=(0,1,0))
-    # elif ref.shape[1]-1 == 3:
-    #     x,y,z = ellipsoid_surface_3D(reachset[1])
-    #     mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
+    x,y = ellipsoid_surface_2D(reachset[1])
+    vts = x+c[0]
+    alts = y+c[1]
+    alt.append([alts.min(), alts.max()])
+    vt.append([vts.min(), vts.max()])
 
-# mlab.axes(s, color=(.7, .7, .7), extent=(-1, 2, -2, 2, 0, 2), z_axis_visibility=False)
-# mlab.show()
-# exit()
+alt = np.array(alt)
+vt = np.array(vt)
 
+plt.subplot(211)
+plt.plot(ref[:,0], ref[:,1], 'k-')
+plt.fill_between(ref[:,0], vt[:,0], vt[:,1], color='g', alpha=0.5)
 for sampled_traj in sampled_trajs:
-    if ref.shape[1]-1 == 2:
-        # mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], np.zeros_like(sampled_traj[:,1]), color=(0,0,1), line_width=0.05)
-        plt.plot(sampled_traj[:,1], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
-    # elif ref.shape[1]-1 == 3:
-    #     mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], sampled_traj[:,3], color=(0,0,1), line_width=0.05)
-# print('over')
-# import ipdb;ipdb.set_trace()
-# from IPython import embed;embed()
-# ref = config.observe_for_output(trace[1:,1:])
-acc = calc_acc(np.array(sampled_trajs)[:, 1:, :], [r[1] for r in reachsets], ref[1:,:])
-# acc_spherical = calc_acc(sampled_traces, [r[1] for r in reachsets_spherical], ref)
-# acc_dryvr = calc_acc(sampled_traces, [r[1] for r in reachsets_dryvr], ref)
-print(vol, acc)
+    plt.plot(sampled_traj[:,0], sampled_traj[:,1], color=(0,0,1), alpha=0.1)
+plt.xlabel('t (s)')
+plt.ylabel(r'$\mathtt{Vt}$ (ft/s)')
 
-# mlab.show()
-# plt.plot([0,1], [1,0])
+plt.subplot(212)
+plt.plot(ref[:,0], ref[:,2], 'k-')
+plt.fill_between(ref[:,0], alt[:,0], alt[:,1], color='g', alpha=0.5)
+for sampled_traj in sampled_trajs:
+    plt.plot(sampled_traj[:,0], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
+plt.xlabel('t (s)')
+plt.ylabel(r'$\mathtt{alt}$ ($\times 100$ ft)')
+
 plt.show()

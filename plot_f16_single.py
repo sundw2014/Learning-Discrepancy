@@ -102,7 +102,7 @@ higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
 c = (lower+higher)/2
 X0_r_max = np.array([10,   0.1, np.pi/16, np.pi/8,  0.1, 1])
 
-r = [5, 0.05, 0.2, 0.2, 0.05, 0.5]
+r = [10, 0.05, 0.2, 0.2, 0.05, 0.5]
 X0 = np.array(c.tolist()+r)
 # X0 = config.sample_X0()
 print(X0)
@@ -135,6 +135,28 @@ for idx_t in range(1, ref.shape[0]):
 # mlab.pipeline.user_defined(data, filter=tvtk.CubeAxesActor())
 # mlab.figure(1, size=(400, 400), bgcolor=(1, 1, 1), fgcolor=(0,0,0))
 # mlab.clf()
+
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 13
+HUGE_SIZE = 25
+
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=HUGE_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=15)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=15)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=15)    # fontsize of the tick labels
+plt.rc('legend', fontsize=10)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+plt.rc('axes', axisbelow=True)
+
+plt.subplots_adjust(
+    top=0.909,
+    bottom=0.132,
+    left=0.133,
+    right=0.893,
+    hspace=0.2,
+    wspace=0.2)
 
 # import ipdb;ipdb.set_trace()
 # plot the ref trace
@@ -181,4 +203,6 @@ print(vol, acc)
 
 # mlab.show()
 # plt.plot([0,1], [1,0])
+plt.xlabel(r'$\mathtt{Vt}$ (ft/s)')
+plt.ylabel(r'$\mathtt{alt}$ ($\times 100$ ft)')
 plt.show()

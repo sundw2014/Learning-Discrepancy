@@ -14,8 +14,6 @@ sys.path.append('configs')
 
 import argparse
 
-np.random.seed(1024)
-
 parser = argparse.ArgumentParser(description="")
 parser.add_argument('--config', type=str,
                         default='jetengine')
@@ -37,10 +35,12 @@ parser.add_argument('--pretrained', type=str)
 parser.add_argument('--data_file_train', type=str)
 parser.add_argument('--data_file_eval', type=str)
 parser.add_argument('--log', type=str)
+parser.add_argument('--seed', type=int, default=1024)
 
 args = parser.parse_args()
 
-# import ipdb;ipdb.set_trace()
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
 
 if args.use_spherical:
     from model_spherical import get_model
@@ -50,8 +50,6 @@ else:
 os.system('cp *.py '+args.log)
 os.system('cp -r configs/ '+args.log)
 os.system('cp -r examples/ '+args.log)
-
-np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
 model, forward = get_model(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1, config)

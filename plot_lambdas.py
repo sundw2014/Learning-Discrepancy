@@ -31,25 +31,48 @@ plt.subplots_adjust(
     wspace=0.2)
 
 lambdas = np.array([0.001, 0.003, 0.009, 0.027, 0.081, 0.243, 0.729])
-vol = np.array([50.06970137, 40.49394116, 24.43284243, 20.65072908, 22.05023782, 15.73883482,
- 11.35559558])
-acc = np.array([0.998755, 0.999475, 0.985045, 0.965935, 0.989445, 0.911625, 0.68357])
-err = 1. - acc
+res = np.load('log_lambdas/res.npy', allow_pickle=True)
+vol_mean = res[:,:,0].mean(axis=0)
+vol_std = res[:,:,0].std(axis=0)
+error_mean = (1-res[:,:,1]).mean(axis=0)
+error_std = (1-res[:,:,1]).std(axis=0)
+
+vol_min = res[:,:,0].min(axis=0)
+vol_max = res[:,:,0].max(axis=0)
+error_min = (1-res[:,:,1]).min(axis=0)
+error_max = (1-res[:,:,1]).max(axis=0)
+
+# import ipdb;ipdb.set_trace()
+# vol = np.array([50.06970137, 40.49394116, 24.43284243, 20.65072908, 22.05023782, 15.73883482,
+#  11.35559558])
+# acc = np.array([0.998755, 0.999475, 0.985045, 0.965935, 0.989445, 0.911625, 0.68357])
+# err = 1. - acc
 
 fig, ax1 = plt.subplots()
 
 ax1.set_xlabel(r'$\lambda$')
 plt.xscale('log')
 ax1.set_ylabel('Error')
-ax1.plot(lambdas, err, 'o-', color='g', label='Error')
+# ax1.fill_between(lambdas, error_min, error_max, facecolor='b', alpha=0.5, label='Error')
+
+# ax1.errorbar(lambdas, error_mean, error_std, capsize=5.0, fmt='-ob', label='Error')
+ax1.errorbar(lambdas, error_mean, [error_mean - error_min, error_max - error_mean], capsize=5.0, fmt='-ob', label='Error')
+# ax1.plot(lambdas, err, 'o-', color='g', label='Error')
 # ax1.tick_params(axis='y', labelcolor=color)
 
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
 # color = 'tab:blue'
 ax2.set_ylabel('Volume')  # we already handled the x-label with ax1
-ax2.plot(lambdas, vol, 'o-', color='b', label='Volume')
-ax2.plot([], [], 'o-', color='g', label='Error')
+# ax2.fill_between(lambdas, vol_min, vol_max, facecolor='g', alpha=0.5, label='volume')
+# ax2.fill_between([], [], [], facecolor='b', alpha=0.5, label='Error')
+# ax2.errorbar(lambdas, vol_mean, vol_std, capsize=5.0, fmt='-ok', label='Volume')
+ax2.errorbar(lambdas, vol_mean, [vol_mean - vol_min, vol_max - vol_mean], capsize=5.0, fmt='-ok', label='Volume')
+ax2.errorbar([], [], [], capsize=5.0, fmt='-ob', label='Error')
+
+# ax2.errorbar([], [], [], capsize=5.0, fmt='-ob', label='Error')
+# ax2.plot(lambdas, vol, 'o-', color='b', label='Volume')
+# ax2.plot([], [], 'o-', color='g', label='Error')
 
 # ax2.tick_params(axis='y', labelcolor=color)
 

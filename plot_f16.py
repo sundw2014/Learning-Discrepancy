@@ -99,147 +99,51 @@ def ellipsoid_surface_2D(P):
     return points[0,:], points[1,:]
 
 query = []
-# X0 = config.sample_X0()
-c = np.array([590, -0.05, np.pi/16, -np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
+c_base = np.array([590, -0.1, 0, -np.pi/4, -0.1, 69])
+inc = np.array([0, 0.025, np.pi/32, np.pi/16, 0.025, 0])
+r = np.array([10, 0.025, np.pi/32, np.pi/16, 0.025, 1])
 
-c = np.array([590, -0.05, np.pi/16, -np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, np.pi/16, np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, np.pi/16, np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, 3*np.pi/16, -np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, 3*np.pi/16, -np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, 3*np.pi/16, np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, -0.05, 3*np.pi/16, np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, np.pi/16, -np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, np.pi/16, -np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, np.pi/16, np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, np.pi/16, np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, 3*np.pi/16, -np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, 3*np.pi/16, -np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, 3*np.pi/16, np.pi/8, -0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c = np.array([590, 0.05, 3*np.pi/16, np.pi/8, 0.05, 69])
-r = np.array([10, 0.05, np.pi/16, np.pi/8, 0.05, 1])
-query.append([c, r])
-
-c,r = query[args.id]
-
-X0 = np.array(c.tolist()+r.tolist())
-print(X0)
-ref = config.simulate(config.get_init_center(X0))
-sampled_inits = [config.sample_x0(X0) for _ in range(100)]
-num_proc = min([1, multiprocessing.cpu_count()-3])
-with Pool(num_proc, initializer=mute) as p:
-    sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
-# sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
-
-benchmark_name = args.config
+for i1 in range(4):
+    for i2 in range(4):
+        for i3 in range(4):
+            for i4 in range(4):
+                c = c_base + (inc * np.array([0,2*i1+1,2*i2+1,2*i3+1,2*i4+1,0]))
+                query.append([c,r])
 
 reachsets = []
-
-X0_mean, X0_std = config.get_X0_normalization_factor()
-X0 = (X0 - X0_mean) / X0_std
-
-# for idx_t in tqdm(range(1, ref.shape[0])):
-for idx_t in range(1, ref.shape[0]):
-    s = time.time()
-    P = forward(torch.tensor(X0.tolist()+[ref[idx_t, 0],]).view(1,-1).cuda().float())
-    e = time.time()
-    # times[0].append(e-s)
-    P = P.squeeze(0)
-    reachsets.append([ref[idx_t, 1:], P.cpu().detach().numpy()])
-
-# from tvtk.api import tvtk
-# mlab.pipeline.user_defined(data, filter=tvtk.CubeAxesActor())
-# mlab.figure(1, size=(400, 400), bgcolor=(1, 1, 1), fgcolor=(0,0,0))
-# mlab.clf()
-
-# import ipdb;ipdb.set_trace()
-# plot the ref trace
-# ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
-if ref.shape[1]-1 == 2:
-    # mlab.plot3d(ref[:,1], ref[:,2], np.zeros_like(ref[:,0]), color=(1,0,0))
-    plt.plot(ref[:,1], ref[:,2], color=(1,0,0))
-# elif ref.shape[1]-1 == 3:
-#     mlab.plot3d(ref[:,1], ref[:,2], ref[:,3], color=(1,1,1))
-
-# mlab.outline(s, color=(.7, .7, .7), extent=(0 ,1 , 0 ,1 , 0 ,1))
-
-vol = calc_volume([r[1] for r in reachsets])
+for c,r in tqdm(query):
+    X0 = np.array(c.tolist()+r.tolist())
+    print(X0)
+    ref = config.simulate(config.get_init_center(X0))
+    X0_mean, X0_std = config.get_X0_normalization_factor()
+    X0 = (X0 - X0_mean) / X0_std
+    for idx_t in range(1, ref.shape[0]):
+        s = time.time()
+        P = forward(torch.tensor(X0.tolist()+[ref[idx_t, 0],]).view(1,-1).cuda().float())
+        e = time.time()
+        # times[0].append(e-s)
+        P = P.squeeze(0)
+        reachsets.append([ref[idx_t, 1:], P.cpu().detach().numpy()])
 
 # plot ellipsoids for each time step
-for reachset in reachsets:
+for reachset in tqdm(reachsets):
     c = reachset[0]
     if ref.shape[1]-1 == 2:
         x,y = ellipsoid_surface_2D(reachset[1])
-        # mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
         plt.plot(x+c[0], y+c[1], color=(0,1,0))
-    # elif ref.shape[1]-1 == 3:
-    #     x,y,z = ellipsoid_surface_3D(reachset[1])
-    #     mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)
 
-# mlab.axes(s, color=(.7, .7, .7), extent=(-1, 2, -2, 2, 0, 2), z_axis_visibility=False)
-# mlab.show()
-# exit()
+plt.plot(ref[:,1], ref[:,2], color=(1,0,0))
+
+c = np.array([590, 0., np.pi/8, 0, 0., 69])
+r = np.array([10, 0.1, np.pi/8, np.pi/4, 0.1, 1])
+X0 = np.array(c.tolist()+r.tolist())
+
+sampled_inits = [config.sample_x0(X0) for _ in range(1000)]
+num_proc = min([1, multiprocessing.cpu_count()-3])
+with Pool(num_proc, initializer=mute) as p:
+    sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
 
 for sampled_traj in sampled_trajs:
-    if ref.shape[1]-1 == 2:
-        # mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], np.zeros_like(sampled_traj[:,1]), color=(0,0,1), line_width=0.05)
-        plt.plot(sampled_traj[:,1], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
-    # elif ref.shape[1]-1 == 3:
-    #     mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], sampled_traj[:,3], color=(0,0,1), line_width=0.05)
-# print('over')
-# import ipdb;ipdb.set_trace()
-# from IPython import embed;embed()
-# ref = config.observe_for_output(trace[1:,1:])
-acc = calc_acc(np.array(sampled_trajs)[:, 1:, :], [r[1] for r in reachsets], ref[1:,:])
-# acc_spherical = calc_acc(sampled_traces, [r[1] for r in reachsets_spherical], ref)
-# acc_dryvr = calc_acc(sampled_traces, [r[1] for r in reachsets_dryvr], ref)
-print(vol, acc)
-
-# mlab.show()
-# plt.plot([0,1], [1,0])
-# plt.show()
-plt.savefig('data/images/%d.png'%(args.id))
+    plt.plot(sampled_traj[:,1], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
+# plt.savefig('data/images/%d.png'%(args.id))
+plt.show()
