@@ -97,14 +97,14 @@ def ellipsoid_surface_2D(P):
     points = np.linalg.inv(P).dot(points.T)
     return points[0,:], points[1,:]
 
-lower = np.array([560, -0.1, 0,       -np.pi/4, -0.1, 70])
-higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
-c = (lower+higher)/2
-X0_r_max = np.array([10,   0.1, np.pi/16, np.pi/8,  0.1, 1])
+# lower = np.array([560, -0.1, 0,       -np.pi/4, -0.1, 70])
+# higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
+# c = (lower+higher)/2
+# X0_r_max = np.array([10,   0.1, np.pi/16, np.pi/8,  0.1, 1])
 
-r = [5, 0.05, 0.2, 0.2, 0.05, 0.5]
-X0 = np.array(c.tolist()+r)
-# X0 = config.sample_X0()
+# r = [5, 0.05, 0.2, 0.2, 0.05, 0.5]
+# X0 = np.array(c.tolist()+r)
+X0 = config.sample_X0()
 print(X0)
 
 ref = config.simulate(config.get_init_center(X0))
@@ -181,4 +181,4 @@ print(vol, acc)
 
 # mlab.show()
 # plt.plot([0,1], [1,0])
-plt.show()
+# plt.show()

@@ -46,7 +46,7 @@ np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
 
-ACC = 0.95
+ACC = 0.99
 
 def PWD(normalized_dis, t):
     T = np.sort(list(set(t.tolist())))
@@ -57,6 +57,8 @@ def PWD(normalized_dis, t):
         dis = normalized_dis[idx]
         dis = np.sort(dis)
         idx = int(len(dis)*ACC)
+        if idx == len(dis):
+            idx -= 1
         DIS[idx_t] = dis[idx]
 
     # import ipdb;ipdb.set_trace()
