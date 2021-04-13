@@ -118,12 +118,15 @@ def trainval(epoch, dataloader, writer, training):
         _volume_loss = _volume_loss.mean()
         # _volume_loss = torch.zeros(1).type(_hinge_loss.type())
 
-        _l2_loss = F.mse_loss(LHS, RHS)
+        # _l2_loss = F.mse_loss(LHS, RHS)
+        CY2 = torch.sqrt(LHS)
+        Y2 = torch.sqrt((DXi.view(batch_size,-1) ** 2).sum(dim=1))
+        _l2_loss = (torch.abs((CY2 - 1)) * Y2 / CY2).mean()
 
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
         # _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
-        _loss = _hinge_loss + args._lambda * _volume_loss# + args._lambda2 * _l2_loss
+        _loss = _hinge_loss + args._lambda * _volume_loss + args._lambda2 * _l2_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)

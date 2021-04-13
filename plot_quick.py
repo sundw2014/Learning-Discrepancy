@@ -107,13 +107,14 @@ def ellipsoid_surface_2D(P):
 X0 = config.sample_X0()
 print(X0)
 
-ref = config.simulate(config.get_init_center(X0))
+ref = config.simulate(config.get_init_center(X0))[::20]
 sampled_inits = [config.sample_x0(X0) for _ in range(100)]
 num_proc = min([1, multiprocessing.cpu_count()-3])
 with Pool(num_proc, initializer=mute) as p:
     # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
     sampled_trajs = list(p.imap(config.simulate, sampled_inits))
 # sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
+sampled_trajs = [traj[::20] for traj in sampled_trajs]
 
 benchmark_name = args.config
 
@@ -141,7 +142,7 @@ for idx_t in range(1, ref.shape[0]):
 # ax.plot(trace[:,1], trace[:,2], trace[:,3], color='r', label='ref')
 if ref.shape[1]-1 == 2:
     # mlab.plot3d(ref[:,1], ref[:,2], np.zeros_like(ref[:,0]), color=(1,0,0))
-    plt.plot(ref[:,1], ref[:,2], color=(1,0,0))
+    plt.plot(ref[:,1], ref[:,2], 'o', color=(1,0,0))
 # elif ref.shape[1]-1 == 3:
 #     mlab.plot3d(ref[:,1], ref[:,2], ref[:,3], color=(1,1,1))
 
@@ -167,7 +168,7 @@ for reachset in reachsets:
 for sampled_traj in sampled_trajs:
     if ref.shape[1]-1 == 2:
         # mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], np.zeros_like(sampled_traj[:,1]), color=(0,0,1), line_width=0.05)
-        plt.plot(sampled_traj[:,1], sampled_traj[:,2], color=(0,0,1), alpha=0.1)
+        plt.plot(sampled_traj[:,1], sampled_traj[:,2], 'o', color=(0,0,1), alpha=0.1)
     # elif ref.shape[1]-1 == 3:
     #     mlab.plot3d(sampled_traj[:,1], sampled_traj[:,2], sampled_traj[:,3], color=(0,0,1), line_width=0.05)
 # print('over')
@@ -181,4 +182,4 @@ print(vol, acc)
 
 # mlab.show()
 # plt.plot([0,1], [1,0])
-# plt.show()
+plt.show()
