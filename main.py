@@ -126,7 +126,7 @@ def trainval(epoch, dataloader, writer, training):
         # _volume_loss = torch.zeros([1]).cuda()
         # print(_hinge_loss, _volume_loss)
         # _loss = _hinge_loss + args._lambda1 * _volume_loss + args._lambda2 * _l2_loss
-        _loss = _hinge_loss + args._lambda * _volume_loss + args._lambda2 * _l2_loss
+        _loss = _hinge_loss + args._lambda * _volume_loss# + args._lambda2 * _l2_loss
 
         loss.update(_loss.item(), batch_size)
         prec.update((LHS.detach().cpu().numpy() <= (RHS.detach().cpu().numpy())).sum() / batch_size, batch_size)

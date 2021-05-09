@@ -105,16 +105,16 @@ def ellipsoid_surface_2D(P):
 # r = [5, 0.05, 0.2, 0.2, 0.05, 0.5]
 # X0 = np.array(c.tolist()+r)
 X0 = config.sample_X0()
-print(X0)
+# print(X0)
 
-ref = config.simulate(config.get_init_center(X0))[::20]
+ref = config.simulate(config.get_init_center(X0))#[::20]
 sampled_inits = [config.sample_x0(X0) for _ in range(100)]
 num_proc = min([1, multiprocessing.cpu_count()-3])
-with Pool(num_proc, initializer=mute) as p:
-    # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
-    sampled_trajs = list(p.imap(config.simulate, sampled_inits))
-# sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
-sampled_trajs = [traj[::20] for traj in sampled_trajs]
+# with Pool(num_proc, initializer=mute) as p:
+#     # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
+#     sampled_trajs = list(p.imap(config.simulate, sampled_inits))
+sampled_trajs = list(tqdm(map(config.simulate, sampled_inits), total=len(sampled_inits)))
+# sampled_trajs = [traj[::20] for traj in sampled_trajs]
 
 benchmark_name = args.config
 
@@ -156,7 +156,7 @@ for reachset in reachsets:
     if ref.shape[1]-1 == 2:
         x,y = ellipsoid_surface_2D(reachset[1])
         # mlab.plot3d(x+c[0], y+c[1], np.zeros_like(x+c[0]), color=(0,1,0))
-        plt.plot(x+c[0], y+c[1], color=(0,1,0))
+        # plt.plot(x+c[0], y+c[1], color=(0,1,0))
     # elif ref.shape[1]-1 == 3:
     #     x,y,z = ellipsoid_surface_3D(reachset[1])
     #     mlab.mesh(x+c[0], y+c[1], z+c[2], color=(0,1,0), opacity=0.9)

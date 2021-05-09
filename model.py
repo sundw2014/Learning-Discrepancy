@@ -5,27 +5,28 @@ mult = None
 
 def get_model(num_dim_input, num_dim_output, config):
     global mult
-    model = torch.nn.Sequential(
-            torch.nn.Linear(num_dim_input, 128, bias=False),
-            # torch.nn.BatchNorm1d(300),
-            torch.nn.LeakyReLU(),
-            torch.nn.Linear(128, 512, bias=False),
-            # torch.nn.BatchNorm1d(300),
-            torch.nn.LeakyReLU(),
-            torch.nn.Linear(512, 128, bias=False),
-            # torch.nn.BatchNorm1d(300),
-            torch.nn.LeakyReLU(),
-            torch.nn.Linear(128, num_dim_output*num_dim_output, bias=False))
-            # torch.nn.Linear(128, 1, bias=False))
     # model = torch.nn.Sequential(
-    #         torch.nn.Linear(num_dim_input, 64, bias=False),
+    #         torch.nn.Linear(num_dim_input, 128, bias=False),
     #         # torch.nn.BatchNorm1d(300),
-    #         torch.nn.Tanh(),
-    #         torch.nn.Linear(64, 64, bias=False),
+    #         torch.nn.LeakyReLU(),
+    #         torch.nn.Linear(128, 512, bias=False),
     #         # torch.nn.BatchNorm1d(300),
-    #         torch.nn.Tanh(),
-    #         torch.nn.Linear(64, num_dim_output*num_dim_output, bias=False))
-    #         # torch.nn.Linear(128, 1, bias=False))
+    #         torch.nn.LeakyReLU(),
+    #         torch.nn.Linear(512, 128, bias=False),
+    #         # torch.nn.BatchNorm1d(300),
+    #         torch.nn.LeakyReLU(),
+    #         torch.nn.Linear(128, num_dim_output*num_dim_output, bias=False))
+            # torch.nn.Linear(128, 1, bias=False))
+    model = torch.nn.Sequential(
+            torch.nn.Linear(num_dim_input, 64, bias=False),
+            # torch.nn.BatchNorm1d(300),
+            torch.nn.Tanh(),
+            torch.nn.Linear(64, 64, bias=False),
+            # torch.nn.BatchNorm1d(300),
+            torch.nn.Tanh(),
+            torch.nn.Linear(64, num_dim_output*num_dim_output, bias=False))
+            # torch.nn.Linear(128, 1, bias=False))
+
     if hasattr(config, 'get_xt_scale'):
         scale = config.get_xt_scale()
         mult = torch.diag(torch.from_numpy(scale))
