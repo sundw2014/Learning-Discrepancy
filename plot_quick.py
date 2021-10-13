@@ -28,10 +28,10 @@ parser.add_argument('--no_cuda', dest='use_cuda', action='store_false')
 parser.set_defaults(use_cuda=True)
 parser.add_argument('--pretrained', type=str)
 parser.add_argument('--no_plot', type=str)
+parser.add_argument('--output', type=str)
 parser.add_argument('--seed', type=int, default=1024)
 
 args = parser.parse_args()
-np.random.seed(args.seed)
 
 config = importlib.import_module('config_'+args.config)
 use_dryvr = 'dryvr' in args.pretrained
@@ -97,6 +97,8 @@ def ellipsoid_surface_2D(P):
     points = np.linalg.inv(P).dot(points.T)
     return points[0,:], points[1,:]
 
+np.random.seed(args.seed)
+
 # lower = np.array([560, -0.1, 0,       -np.pi/4, -0.1, 70])
 # higher = np.array([600,  0.1, np.pi/4, np.pi/4,  0.1, 80])
 # c = (lower+higher)/2
@@ -108,7 +110,7 @@ X0 = config.sample_X0()
 # print(X0)
 
 ref = config.simulate(config.get_init_center(X0))#[::20]
-sampled_inits = [config.sample_x0(X0) for _ in range(100)]
+sampled_inits = [config.sample_x0_uniform(X0) for _ in range(100)]
 num_proc = min([1, multiprocessing.cpu_count()-3])
 # with Pool(num_proc, initializer=mute) as p:
 #     # sampled_trajs = list(tqdm(p.imap(config.simulate, sampled_inits), total=len(sampled_inits)))
@@ -179,7 +181,8 @@ acc = calc_acc(np.array(sampled_trajs)[:, 1:, :], [r[1] for r in reachsets], ref
 # acc_spherical = calc_acc(sampled_traces, [r[1] for r in reachsets_spherical], ref)
 # acc_dryvr = calc_acc(sampled_traces, [r[1] for r in reachsets_dryvr], ref)
 print(vol, acc)
-
+with open(args.output, 'a') as f:
+    print(vol, acc, file=f)
 # mlab.show()
 # plt.plot([0,1], [1,0])
-plt.show()
+#plt.show()

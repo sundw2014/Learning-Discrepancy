@@ -41,6 +41,18 @@ def sample_x0(X0):
     x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
     return x0
 
+def sample_x0_uniform(X0):
+    n = len(X0_r_max)
+    center = X0[:n]
+    r = X0[n:]
+
+    dist = (np.random.rand(n)-0.5)*2
+
+    x0 = center + dist * r
+    x0[x0>X0_center_range[:,1]] = X0_center_range[x0>X0_center_range[:,1],1]
+    x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
+    return x0
+
 def simulate(x0):
     ### Initial Conditions ###
     power = 9 # engine power level (0-10)

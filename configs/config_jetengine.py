@@ -39,6 +39,21 @@ def sample_x0(X0):
     x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
     return x0
 
+def sample_x0_uniform(X0):
+    center = X0[:-1]
+    r = X0[-1]
+
+    n = len(center)
+    direction = np.random.randn(n)
+    direction = direction / np.linalg.norm(direction)
+
+    dist = np.random.rand()
+    x0 = center + direction * dist * r
+    # x0 = center + direction * r
+    x0[x0>X0_center_range[:,1]] = X0_center_range[x0>X0_center_range[:,1],1]
+    x0[x0<X0_center_range[:,0]] = X0_center_range[x0<X0_center_range[:,0],0]
+    return x0
+
 def simulate(x0):
     return np.array(TC_Simulate("Default", x0, TMAX))
 

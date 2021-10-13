@@ -38,6 +38,8 @@ parser.add_argument('--log', type=str)
 
 args = parser.parse_args()
 
+os.system('mkdir '+args.log)
+os.system('echo "%s" > %s/cmd.txt'%(' '.join(sys.argv), args.log))
 os.system('cp *.py '+args.log)
 os.system('cp -r configs/ '+args.log)
 os.system('cp -r examples/ '+args.log)
@@ -46,7 +48,7 @@ np.random.seed(1024)
 
 config = importlib.import_module('config_'+args.config)
 
-ACC = 0.99
+ACC = 0.97
 
 def PWD(normalized_dis, t):
     T = np.sort(list(set(t.tolist())))

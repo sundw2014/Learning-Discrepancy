@@ -51,7 +51,7 @@ parser.add_argument('--pretrained_dryvr', type=str)
 args = parser.parse_args()
 
 config = importlib.import_module('config_'+args.config)
-model_ours, forward_ours = get_model_ours(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1)
+model_ours, forward_ours = get_model_ours(len(config.sample_X0())+1, config.simulate(config.get_init_center(config.sample_X0())).shape[1]-1,  config)
 model_ours = torch.nn.DataParallel(model_ours)
 if args.use_cuda:
     model_ours = model_ours.cuda()

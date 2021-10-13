@@ -31,7 +31,7 @@ plt.subplots_adjust(
     wspace=0.2)
 
 lambdas = np.array([0.001, 0.003, 0.009, 0.027, 0.081, 0.243, 0.729])
-res = np.load('log_lambdas/res.npy', allow_pickle=True)
+res = np.load('log/log_lambdas/res.npy', allow_pickle=True)
 vol_mean = res[:,:,0].mean(axis=0)
 vol_std = res[:,:,0].std(axis=0)
 error_mean = (1-res[:,:,1]).mean(axis=0)

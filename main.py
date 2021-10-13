@@ -25,7 +25,7 @@ parser.add_argument('--bs', dest='batch_size', type=int, default=256)
 parser.add_argument('--num_train', type=int, default=100)
 parser.add_argument('--num_test', type=int, default=10)
 parser.add_argument('--lr', dest='learning_rate', type=float, default=0.01)
-parser.add_argument('--lambda', dest='_lambda', type=float, default=0.1)
+parser.add_argument('--lambda', dest='_lambda', type=float, default=0.03)
 parser.add_argument('--lambda2', dest='_lambda2', type=float, default=0.1)
 parser.add_argument('--alpha', dest='alpha', type=float, default=0.001)
 parser.add_argument('--eps', dest='eps', type=float, default=0.01)
@@ -35,7 +35,7 @@ parser.add_argument('--pretrained', type=str)
 parser.add_argument('--data_file_train', type=str)
 parser.add_argument('--data_file_eval', type=str)
 parser.add_argument('--log', type=str)
-parser.add_argument('--seed', type=int, default=1024)
+parser.add_argument('--seed', type=int, default=1)
 
 args = parser.parse_args()
 
@@ -47,6 +47,8 @@ if args.use_spherical:
 else:
     from model import get_model
 
+os.system('mkdir '+args.log)
+os.system('echo "%s" > %s/cmd.txt'%(' '.join(sys.argv), args.log))
 os.system('cp *.py '+args.log)
 os.system('cp -r configs/ '+args.log)
 os.system('cp -r examples/ '+args.log)
